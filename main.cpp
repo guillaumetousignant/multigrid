@@ -1,5 +1,6 @@
 #include <iostream>
 #include <vector>
+#include <chrono>
 
 #include <occa.hpp>
 
@@ -11,9 +12,9 @@ int main(int argc, const char **argv) {
     occa::json args = parseArgs(argc, argv);
 
     // These two should be input arguments
-    const unsigned int N = 128; 
+    const unsigned int N = 256; 
     const unsigned int levels = 4;
-    const double tolerance = 1e-7;
+    const float tolerance = 1e-7;
 
     // Figuring out how many times we can coarsen
     unsigned int max_levels = 1;
@@ -32,7 +33,7 @@ int main(int argc, const char **argv) {
         exit(-1);
     }
 
-    // Vector containing all the grids
+    // Vector of u containing all the grids
     std::vector<float> u(2*N, 1.0); // 1 is the initial guess
 
     // Vector containg number of nodes for all levels
@@ -44,17 +45,23 @@ int main(int argc, const char **argv) {
     // Vector containing delta_x of each level
     std::vector<float> delta_x(max_levels, 1.0/(N - 1));
 
+    // Vector containing f at each point for the finest grid
+    std::vector<float> f(N, 0.0);
+
+    // u_star is cached, so that it can be computed before the u_i start being updated
+    std::vector<float> u_star(2*N, 0.0);
+
+    // Residuals are cached, so that it can run in parallel
+    std::vector<float> r(2*N, 0.0);
+
     for (unsigned int h = 1; h < max_levels; ++h) {
         N_h[h] /= intExp2(h);
         offset[h] = offset[h-1] + N_h[h-1];
         delta_x[h] = 1.0/(N_h[h] - 1); // square here?
     }
 
-    // Vector containing f at each point for the finest grid
-    std::vector<float> f(N, 0.0);
-
     for (unsigned int i = 0; i < N; ++i) {
-        f[i] = std::pow(M_PI, 2) * std::sin(M_PI * i * delta_x[0]);
+        f[i] = std::pow(delta_x[0], 2) * std::pow(M_PI, 2) * std::sin(M_PI * i * delta_x[0]);
     }
 
     // Initial conditions
@@ -65,13 +72,50 @@ int main(int argc, const char **argv) {
 
     // Jacobi iteration
     unsigned int h = 0;
-    const double weight = 1.0; // With a weight of 1, the original Jacobi is recovered
-    for (unsigned int n = 0; n < 1000; ++n) {
+    const float weight = 1.0; // With a weight of 1, the original Jacobi is recovered
+    float residual = 1.0;
+    unsigned int n = 0;
+
+    auto t_start = std::chrono::high_resolution_clock::now();
+    while (residual > tolerance) {
+        ++n;
         for (unsigned int i = 1; i < N-1; ++i) {
-            const unsigned int u_star = 0.5*(u[offset[h] + i + 1] + u[offset[h] + i - 1] + std::pow(delta_x[h], 2) * f[i]); // u_star could be made an array if we don't want to see u_i-1^(n+1), because as it is now u_i-1 gets updated before u_i
-            u[offset[h] + i] += weight * (u_star - u[offset[h] + i]);
+            u_star[offset[h] + i] = 0.5*(u[offset[h] + i + 1] + u[offset[h] + i - 1] + f[i]);
+        }
+        for (unsigned int i = 1; i < N-1; ++i) {
+            r[offset[h] + i] = weight * (u_star[offset[h] + i] - u[offset[h] + i]);
+            u[offset[h] + i] += r[offset[h] + i];
+        }
+
+        // Norm
+        /*residual = 0.0;
+        for (unsigned int i = 1; i < N-1; ++i) {
+            residual += std::pow(r[offset[h] + i], 2);
+        }
+        residual = std::sqrt(residual);*/
+
+        // Max
+        residual = 0.0;
+        for (unsigned int i = 1; i < N-1; ++i) {
+            residual = std::max(residual, std::abs(r[offset[h] + i]));
         }
     }
+    auto t_end = std::chrono::high_resolution_clock::now();
+
+    // Display section
+    double error = 0.0;
+    for (unsigned int i = 1; i < N-1; ++i) {
+        error = std::max(error, std::abs(u[offset[0] + i] - std::sin(M_PI * i * delta_x[h])));
+    }
+
+    std::cout << "i    numerical    analytical    residual    error" << std::endl;
+    for (unsigned int i = 0; i < N; ++i) {
+        std::cout << i << " " << std::setw(15) << u[offset[h] + i] << " " << std::setw(15) << r[offset[h] + i] << " " << std::setw(15) << std::sin(M_PI * i * delta_x[h]) << " " << std::setw(15) << std::abs(u[offset[h] + i] - std::sin(M_PI * i * delta_x[h])) << std::endl;
+    }
+
+    std::cout << std::endl << "Iterations    max residual    max error    time taken [s]" << std::endl;
+    std::cout << n << " " << std::setw(15) << residual << " " << std::setw(15) << error << " " << std::setw(15) << std::chrono::duration<double, std::milli>(t_end-t_start).count()/1000.0 << std::endl;
+
 
 
 
@@ -132,9 +176,9 @@ int main(int argc, const char **argv) {
     o_ab.copyTo(ab);
 
     // Assert values
-    for (int i = 0; i < 5; ++i) {
+    /*for (int i = 0; i < 5; ++i) {
         std::cout << i << ": " << ab[i] << '\n';
-    }
+    }*/
     for (int i = 0; i < entries; ++i) {
         if (ab[i] != (a[i] + b[i])) {
         throw 1;
