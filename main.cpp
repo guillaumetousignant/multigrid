@@ -94,7 +94,7 @@ occa::json parseArgs(int argc, const char **argv) {
       occa::cli::option('d', "device",
                         "Device properties (default: \"mode: 'Serial'\")")
       .withArg()
-      .withDefaultValue("mode: 'Serial'")
+      .withDefaultValue("mode: 'OpenMP', threads: 8")
     )
     .addOption(
       occa::cli::option('v', "verbose",
