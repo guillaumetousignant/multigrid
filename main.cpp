@@ -14,7 +14,7 @@ int main(int argc, const char **argv) {
     // These two should be input arguments
     const unsigned int N = 256; 
     const unsigned int levels = 4;
-    const float tolerance = 1e-7;
+    const float tolerance = 1e-10;
 
     // Figuring out how many times we can coarsen
     unsigned int max_levels = 1;
@@ -72,7 +72,7 @@ int main(int argc, const char **argv) {
 
     // Jacobi iteration
     unsigned int h = 0;
-    const float weight = 1.0; // With a weight of 1, the original Jacobi is recovered
+    const float weight = 2.0/(1.0 + std::sqrt(1.0 + std::pow(std::cos(M_PI * delta_x[0]), 2))); // With a weight of 1, the original Jacobi is recovered
     float residual = 1.0;
     unsigned int n = 0;
 
