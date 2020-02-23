@@ -97,13 +97,13 @@ int main(int argc, const char **argv) {
     float residual = 1.0;
     unsigned int n = 0;
     unsigned int n_V = 0;
-    const unsigned int n_relax_down = 5; // Will actually do one more because of reiduals calculation
-    const unsigned int n_relax_up = 5;
+    const unsigned int n_relax_down = 5;    // Will actually do one more because of reiduals calculation
+    const unsigned int n_relax_up = 5;      // Will actually do one more because of reiduals calculation
+    unsigned int level = 0;
 
     auto t_start = std::chrono::high_resolution_clock::now();
     while (residual > tolerance) {
         ++n_V;
-        unsigned int level = 0;
         // Relaxation steps
         for (unsigned int k = 0; k < n_relax_down; ++k){
             ++n;
@@ -155,6 +155,37 @@ int main(int argc, const char **argv) {
         }
 
         // Solve fully here?
+
+        // Going up
+        while (level > 0){
+            ++level;
+            // Prolongation
+            for (unsigned int i = 0; i < N_h[level-1]; ++i) {
+                u[offset[level] + 2*i] += u[offset[level-1] + i];
+                u[offset[level] + 2*i + 1] += 0.5 * (u[offset[level-1] + i] + u[offset[level-1] + i + 1]);
+            }
+
+            // Relaxation steps
+            for (unsigned int k = 0; k < n_relax_up; ++k){
+                ++n;
+                for (unsigned int i = 1; i < N_h[level]; ++i) {
+                    u_star[offset[level] + i] = 0.5*(u[offset[level] + i + 1] + u[offset[level] + i - 1] + r[offset[level] + i]);
+                }
+                for (unsigned int i = 1; i < N_h[level]; ++i) {
+                    u[offset[level] + i] += weight * (u_star[offset[level] + i] - u[offset[level] + i]);
+                }
+            }
+
+            // Calculate residuals
+            ++n;
+            for (unsigned int i = 1; i < N_h[level]; ++i) {
+                u_star[offset[level] + i] = 0.5*(u[offset[level] + i + 1] + u[offset[level] + i - 1] + r[offset[level] + i]);
+            }
+            for (unsigned int i = 1; i < N_h[level]; ++i) {
+                r[offset[level] + i] = weight * (u_star[offset[level] + i] - u[offset[level] + i]);
+                u[offset[level] + i] += r[offset[level] + i];
+            }
+        }
         
 
         // Norm
