@@ -88,36 +88,86 @@ int main(int argc, const char **argv) {
     for (unsigned int h = 0; h < max_levels; ++h) {
         u[offset[h]] = 0;           // u(0) = 0
         u[offset[h]+N_h[h]] = 0;    // u(1) = 0
+        r[offset[h]] = 0;           // r(0) = 0
+        r[offset[h]+N_h[h]] = 0;    // r(1) = 0
     }
 
     // Jacobi iteration
-    unsigned int h = 0;
     const float weight = 2.0/(1.0 + std::sqrt(1.0 + std::pow(std::cos(M_PI * delta_x[0]), 2))); // With a weight of 1, the original Jacobi is recovered
     float residual = 1.0;
     unsigned int n = 0;
+    unsigned int n_V = 0;
+    const unsigned int n_relax_down = 5; // Will actually do one more because of reiduals calculation
+    const unsigned int n_relax_up = 5;
 
     auto t_start = std::chrono::high_resolution_clock::now();
     while (residual > tolerance) {
+        ++n_V;
+        unsigned int level = 0;
+        // Relaxation steps
+        for (unsigned int k = 0; k < n_relax_down; ++k){
+            ++n;
+            for (unsigned int i = 1; i < N_h[level]; ++i) {
+                u_star[offset[level] + i] = 0.5*(u[offset[level] + i + 1] + u[offset[level] + i - 1] + f[i]);
+            }
+            for (unsigned int i = 1; i < N_h[level]; ++i) {
+                u[offset[level] + i] += weight * (u_star[offset[level] + i] - u[offset[level] + i]);
+            }
+        }
+        // Calculate residuals
         ++n;
-        for (unsigned int i = 1; i < N; ++i) {
-            u_star[offset[h] + i] = 0.5*(u[offset[h] + i + 1] + u[offset[h] + i - 1] + f[i]);
+        for (unsigned int i = 1; i < N_h[level]; ++i) {
+            u_star[offset[level] + i] = 0.5*(u[offset[level] + i + 1] + u[offset[level] + i - 1] + f[i]);
         }
-        for (unsigned int i = 1; i < N; ++i) {
-            r[offset[h] + i] = weight * (u_star[offset[h] + i] - u[offset[h] + i]);
-            u[offset[h] + i] += r[offset[h] + i];
+        for (unsigned int i = 1; i < N_h[level]; ++i) {
+            r[offset[level] + i] = weight * (u_star[offset[level] + i] - u[offset[level] + i]);
+            u[offset[level] + i] += r[offset[level] + i];
         }
+
+        // Going down
+        while (level < levels){
+            ++level;
+            // Restriction
+            for (unsigned int i = 1; i < N_h[level]; ++i) {
+                r[offset[level] + i] = 0.25*(r[2*(offset[level-1] + i) - 1] + r[2*(offset[level-1] + i) + 1] + 2.0*r[2*(offset[level-1] + i)]);
+            }
+
+            // Relaxation steps
+            for (unsigned int k = 0; k < n_relax_down; ++k){
+                ++n;
+                for (unsigned int i = 1; i < N_h[level]; ++i) {
+                    u_star[offset[level] + i] = 0.5*(u[offset[level] + i + 1] + u[offset[level] + i - 1] + r[offset[level] + i]);
+                }
+                for (unsigned int i = 1; i < N_h[level]; ++i) {
+                    u[offset[level] + i] += weight * (u_star[offset[level] + i] - u[offset[level] + i]);
+                }
+            }
+
+            // Calculate residuals
+            ++n;
+            for (unsigned int i = 1; i < N_h[level]; ++i) {
+                u_star[offset[level] + i] = 0.5*(u[offset[level] + i + 1] + u[offset[level] + i - 1] + r[offset[level] + i]);
+            }
+            for (unsigned int i = 1; i < N_h[level]; ++i) {
+                r[offset[level] + i] = weight * (u_star[offset[level] + i] - u[offset[level] + i]);
+                u[offset[level] + i] += r[offset[level] + i];
+            }
+        }
+
+        // Solve fully here?
+        
 
         // Norm
         /*residual = 0.0;
         for (unsigned int i = 1; i < N-1; ++i) {
-            residual += std::pow(r[offset[h] + i], 2);
+            residual += std::pow(r[offset[level] + i], 2);
         }
         residual = std::sqrt(residual);*/
 
         // Max
         residual = 0.0;
         for (unsigned int i = 1; i < N; ++i) {
-            residual = std::max(residual, std::abs(r[offset[h] + i]));
+            residual = std::max(residual, std::abs(r[offset[level] + i]));
         }
     }
     auto t_end = std::chrono::high_resolution_clock::now();
@@ -125,12 +175,12 @@ int main(int argc, const char **argv) {
     // Display section
     double error = 0.0;
     for (unsigned int i = 1; i <= N; ++i) {
-        error = std::max(error, std::abs(u[offset[0] + i] - std::sin(M_PI * i * delta_x[h])));
+        error = std::max(error, std::abs(u[offset[0] + i] - std::sin(M_PI * i * delta_x[0])));
     }
 
     std::cout << "i      numerical      analytical        residual           error" << std::endl;
     for (unsigned int i = 0; i <= N; ++i) {
-        std::cout << i << " " << std::setw(15) << u[offset[h] + i] << " " << std::setw(15) << std::sin(M_PI * i * delta_x[h]) << std::setw(15) << r[offset[h] + i] << " " << " " << std::setw(15) << std::abs(u[offset[h] + i] - std::sin(M_PI * i * delta_x[h])) << std::endl;
+        std::cout << i << " " << std::setw(15) << u[offset[0] + i] << " " << std::setw(15) << std::sin(M_PI * i * delta_x[0]) << std::setw(15) << r[offset[0] + i] << " " << " " << std::setw(15) << std::abs(u[offset[0] + i] - std::sin(M_PI * i * delta_x[0])) << std::endl;
     }
 
     std::cout << std::endl << "Iterations  max residual   max error       time taken [s]" << std::endl;
