@@ -125,7 +125,7 @@ int main(int argc, const char **argv) {
         }
 
         // Going down
-        while (level < levels){
+        while (level < levels-1){
             ++level;
             // Restriction
             for (unsigned int i = 1; i < N_h[level]; ++i) {
