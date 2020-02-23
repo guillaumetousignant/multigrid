@@ -158,11 +158,11 @@ int main(int argc, const char **argv) {
 
         // Going up
         while (level > 0){
-            ++level;
+            --level;
             // Prolongation
-            for (unsigned int i = 0; i < N_h[level-1]; ++i) {
-                u[offset[level] + 2*i] += u[offset[level-1] + i];
-                u[offset[level] + 2*i + 1] += 0.5 * (u[offset[level-1] + i] + u[offset[level-1] + i + 1]);
+            for (unsigned int i = 0; i < N_h[level+1]; ++i) {
+                u[offset[level] + 2*i] += u[offset[level+1] + i];
+                u[offset[level] + 2*i + 1] += 0.5 * (u[offset[level+1] + i] + u[offset[level+1] + i + 1]);
             }
 
             // Relaxation steps
