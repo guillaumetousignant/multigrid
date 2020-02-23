@@ -9,12 +9,32 @@ occa::json parseArgs(int argc, const char **argv);
 unsigned int intExp2(unsigned int p);
 
 int main(int argc, const char **argv) {
-    occa::json args = parseArgs(argc, argv);
+    // Parameters
+    unsigned int N = 16; 
+    unsigned int levels = 4;
+    float tolerance = 1e-10;
+    int argc_occa = argc;
+    const char **argv_occa = argv;
 
-    // These two should be input arguments
-    const unsigned int N = 8; 
-    const unsigned int levels = 4;
-    const float tolerance = 1e-10;
+    if (argc > 3) {
+        N = std::stoi(argv[1]);
+        levels = std::stoi(argv[2]);
+        tolerance = std::stod(argv[3]); // Using stod and casting to float cause I'll forget to change it if I change to doubles
+        argc_occa -= 3;
+        argv_occa = argv + 3;
+    }
+    else if (argc > 2) {
+        N = std::stoi(argv[1]);
+        levels = std::stoi(argv[2]);
+        argc_occa -= 2;
+        argv_occa = argv + 2;
+    }
+    else if (argc > 1) {
+        N = std::stoi(argv[1]);
+        argc_occa -= 1;
+        argv_occa = argv + 1;
+    }
+    occa::json args = parseArgs(argc_occa, argv_occa);
 
     // Figuring out how many times we can coarsen
     unsigned int max_levels = 1;
@@ -57,7 +77,7 @@ int main(int argc, const char **argv) {
     for (unsigned int h = 1; h < max_levels; ++h) {
         N_h[h] /= intExp2(h);
         offset[h] = offset[h-1] + N_h[h-1] + 1;
-        delta_x[h] = 1.0/N_h[h]; // square here?
+        delta_x[h] = 1.0/N_h[h];
     }
 
     for (unsigned int i = 0; i <= N; ++i) {
