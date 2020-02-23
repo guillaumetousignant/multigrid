@@ -18,7 +18,7 @@ int main(int argc, const char **argv) {
 
     // Figuring out how many times we can coarsen
     unsigned int max_levels = 1;
-    unsigned int N_at_h = 128;
+    unsigned int N_at_h = N;
     while (N_at_h%2 == 0 && N_at_h > 2){
         ++max_levels;
         N_at_h /= 2;
