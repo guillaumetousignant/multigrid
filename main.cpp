@@ -10,9 +10,9 @@ unsigned int intExp2(unsigned int p);
 
 int main(int argc, const char **argv) {
     // Parameters
-    unsigned int N = 16; 
-    unsigned int levels = 4;
-    float tolerance = 1e-10;
+    unsigned int N = 16;        // First command line input
+    unsigned int levels = 4;    // Second command line input
+    float tolerance = 1e-10;    // Third command line input
     int argc_occa = argc;
     const char **argv_occa = argv;
 
@@ -225,7 +225,7 @@ occa::json parseArgs(int argc, const char **argv) {
         )
         .addOption(
         occa::cli::option('d', "device",
-                            "Device properties (default: \"mode: 'Serial'\")")
+                            "Device properties (default: \"mode: 'OpenMP', threads: 8\")")
         .withArg()
         .withDefaultValue("mode: 'OpenMP', threads: 8")
         )
