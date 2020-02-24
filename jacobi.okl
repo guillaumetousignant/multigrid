@@ -16,7 +16,7 @@
 }
 
 @kernel void initialConditions(const unsigned int N,
-                        const float offset,
+                        const unsigned int offset,
                         const float u_i,
                         const float u_0,
                         const float u_N,
