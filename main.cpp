@@ -57,10 +57,10 @@ int main(int argc, const char **argv) {
     std::vector<float> u(2*N+max_levels-2, 1.0); // 1 is the initial guess
 
     // Vector containg number of elements for all levels
-    std::vector<float> N_h(max_levels, N);
+    std::vector<unsigned int> N_h(max_levels, N);
 
     // Vector for keeping track of where all grids are in the big vector
-    std::vector<float> offset(max_levels, 0.0);
+    std::vector<unsigned int> offset(max_levels, 0.0);
 
     // Vector containing delta_x of each level
     std::vector<float> delta_x(max_levels, 1.0/N);
