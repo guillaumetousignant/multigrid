@@ -166,7 +166,7 @@ int main(int argc, const char **argv) {
 
     auto t_start_GPU = std::chrono::high_resolution_clock::now();
     while (residual_GPU > tolerance) {
-        ++n;
+        ++n_GPU;
         weighedJacobiTop(N_h[h], offset[h], weight, f_GPU, u_GPU, u_star_GPU, r_GPU);
         reduction(N_h[h], offset[h], r_GPU, block_sum_GPU);
 
@@ -238,7 +238,7 @@ int main(int argc, const char **argv) {
     }
 
     std::cout << std::endl << "Iterations  max residual   max error       time taken [s]" << std::endl;
-    std::cout << n << " " << std::setw(15) << residual_GPU << " " << std::setw(15) << error << " " << std::setw(15) << std::chrono::duration<double, std::milli>(t_end_GPU-t_start_GPU).count()/1000.0 << std::endl;
+    std::cout << n_GPU << " " << std::setw(15) << residual_GPU << " " << std::setw(15) << error_GPU << " " << std::setw(15) << std::chrono::duration<double, std::milli>(t_end_GPU-t_start_GPU).count()/1000.0 << std::endl;
 
 
     return 0;
