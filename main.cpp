@@ -104,6 +104,7 @@ int main(int argc, const char **argv) {
     auto t_start = std::chrono::high_resolution_clock::now();
     while (residual > tolerance) {
         ++n_V;
+
         // Relaxation steps
         for (unsigned int k = 0; k < n_relax_down; ++k){
             ++n;
@@ -114,6 +115,7 @@ int main(int argc, const char **argv) {
                 u[offset[level] + i] += weight * (u_star[offset[level] + i] - u[offset[level] + i]);
             }
         }
+
         // Calculate residuals
         ++n;
         for (unsigned int i = 1; i < N_h[level]; ++i) {
@@ -127,6 +129,7 @@ int main(int argc, const char **argv) {
         // Going down
         while (level < levels-1){
             ++level;
+
             // Restriction
             for (unsigned int i = 1; i < N_h[level]; ++i) {
                 r[offset[level] + i] = 0.25*(r[offset[level-1] + 2*i - 1] + r[offset[level-1] + 2*i + 1] + 2.0*r[offset[level-1] + 2*i]);
@@ -159,6 +162,7 @@ int main(int argc, const char **argv) {
         // Going up
         while (level > 0){
             --level;
+            
             // Prolongation
             for (unsigned int i = 0; i < N_h[level+1]; ++i) {
                 u[offset[level] + 2*i] += u[offset[level+1] + i];
