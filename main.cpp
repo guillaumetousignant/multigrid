@@ -35,10 +35,11 @@ int main(int argc, const char **argv) {
         argv_occa = argv + 1;
     }
     occa::json args = parseArgs(argc_occa, argv_occa);
-    
+
     occa::device device;
     occa::kernel addVectors;
-    occa::memory o_a, o_b, o_ab;
+    occa::memory f_GPU, u_GPU, u_star_GPU, r_GPU;
+    occa::memory N_h_GPU, offset_GPU, delta_x_GPU;
 
     //---[ Device setup with string flags ]-------------------
     device.setup((std::string) args["options/device"]);
@@ -95,11 +96,26 @@ int main(int argc, const char **argv) {
     // Residuals are cached, so that it can run in parallel
     std::vector<float> r(2*N+max_levels-2, 0.0);
 
+    // GPU vectors init
+    N_h_GPU = device.malloc(max_levels, occa::dtype::float_);
+    offset_GPU = device.malloc(max_levels, occa::dtype::float_);
+    delta_x_GPU = device.malloc(max_levels, occa::dtype::float_);
+    N_h_GPU.copyFrom(N_h.data());
+    offset_GPU.copyFrom(offset.data());
+    delta_x_GPU.copyFrom(delta_x.data());
+
+    f_GPU = device.malloc(N+1, occa::dtype::float_);
+    u_GPU = device.malloc(2*N+max_levels-2, occa::dtype::float_);
+    u_star_GPU = device.malloc(2*N+max_levels-2, occa::dtype::float_);
+    r_GPU = device.malloc(2*N+max_levels-2, occa::dtype::float_);
+
     for (unsigned int h = 1; h < max_levels; ++h) {
         N_h[h] /= intExp2(h);
         offset[h] = offset[h-1] + N_h[h-1] + 1;
         delta_x[h] = 1.0/N_h[h];
     }
+
+
 
     for (unsigned int i = 0; i <= N; ++i) {
         f[i] = std::pow(delta_x[0], 2) * std::pow(M_PI, 2) * std::sin(M_PI * i * delta_x[0]);
