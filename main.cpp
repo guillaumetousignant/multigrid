@@ -213,6 +213,7 @@ int main(int argc, const char **argv) {
         error = std::max(error, std::abs(u[offset[0] + i] - std::sin(M_PI * i * delta_x[h])));
     }
 
+    std::cout << std::endl << "CPU result" << std::endl;
     std::cout << "i      numerical      analytical        residual           error" << std::endl;
     for (unsigned int i = 0; i <= N; ++i) {
         std::cout << i << " " << std::setw(15) << u[offset[h] + i] << " " << std::setw(15) << std::sin(M_PI * i * delta_x[h]) << std::setw(15) << r[offset[h] + i] << " " << " " << std::setw(15) << std::abs(u[offset[h] + i] - std::sin(M_PI * i * delta_x[h])) << std::endl;
@@ -221,80 +222,24 @@ int main(int argc, const char **argv) {
     std::cout << std::endl << "Iterations  max residual   max error       time taken [s]" << std::endl;
     std::cout << n << " " << std::setw(15) << residual << " " << std::setw(15) << error << " " << std::setw(15) << std::chrono::duration<double, std::milli>(t_end-t_start).count()/1000.0 << std::endl;
 
+    // Host <- Device
+    u_GPU.copyTo(u.data());
+    r_GPU.copyTo(r.data());
 
-
-    /*
-    int entries = 5;
-
-    float *a  = new float[entries];
-    float *b  = new float[entries];
-    float *ab = new float[entries];
-
-    for (int i = 0; i < entries; ++i) {
-        a[i]  = i;
-        b[i]  = 1 - i;
-        ab[i] = 0;
+    double error_GPU = 0.0;
+    for (unsigned int i = 1; i <= N; ++i) {
+        error_GPU = std::max(error_GPU, std::abs(u[offset[0] + i] - std::sin(M_PI * i * delta_x[h])));
     }
 
-    occa::device device;
-    occa::kernel addVectors;
-    occa::memory o_a, o_b, o_ab;
-
-    //---[ Device setup with string flags ]-------------------
-    device.setup((std::string) args["options/device"]);
-
-    // device.setup("mode: 'Serial'");
-
-    // device.setup("mode     : 'OpenMP', "
-    //              "schedule : 'compact', "
-    //              "chunk    : 10");
-
-    // device.setup("mode        : 'OpenCL', "
-    //              "platform_id : 0, "
-    //              "device_id   : 1");
-
-    // device.setup("mode      : 'CUDA', "
-    //              "device_id : 0");
-    //========================================================
-
-    // Allocate memory on the device
-    o_a  = device.malloc(entries, occa::dtype::float_);
-    // Primitive types are available by template
-    o_b  = device.malloc(entries, occa::dtype::get<float>());
-
-    // We can also allocate memory without a dtype
-    // WARNING: This will disable runtime type checking
-    o_ab = device.malloc(entries * sizeof(float));
-
-    // Compile the kernel at run-time
-    addVectors = device.buildKernel("addVectors.okl",
-                                    "addVectors");
-
-    // Copy memory to the device
-    o_a.copyFrom(a);
-    o_b.copyFrom(b);
-
-    // Launch device kernel
-    addVectors(entries, o_a, o_b, o_ab);
-
-    // Copy result to the host
-    o_ab.copyTo(ab);
-
-    // Assert values
-    for (int i = 0; i < 5; ++i) {
-        std::cout << i << ": " << ab[i] << '\n';
-    }
-    for (int i = 0; i < entries; ++i) {
-        if (ab[i] != (a[i] + b[i])) {
-        throw 1;
-        }
+    std::cout << std::endl << "GPU result" << std::endl;
+    std::cout << "i      numerical      analytical        residual           error" << std::endl;
+    for (unsigned int i = 0; i <= N; ++i) {
+        std::cout << i << " " << std::setw(15) << u[offset[h] + i] << " " << std::setw(15) << std::sin(M_PI * i * delta_x[h]) << std::setw(15) << r[offset[h] + i] << " " << " " << std::setw(15) << std::abs(u[offset[h] + i] - std::sin(M_PI * i * delta_x[h])) << std::endl;
     }
 
-    // Free host memory
-    delete [] a;
-    delete [] b;
-    delete [] ab;
-    */
+    std::cout << std::endl << "Iterations  max residual   max error       time taken [s]" << std::endl;
+    std::cout << n << " " << std::setw(15) << residual_GPU << " " << std::setw(15) << error << " " << std::setw(15) << std::chrono::duration<double, std::milli>(t_end_GPU-t_start_GPU).count()/1000.0 << std::endl;
+
 
     return 0;
 }
