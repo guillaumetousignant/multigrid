@@ -10,7 +10,7 @@
 @kernel void initialFConditions(const unsigned int N,
                         const float delta_x,
                         float *f) {
-  for (int i = 0; i <= N; ++i; @tile(16, @outer, @inner)) {
+  for (unsigned int i = 0; i <= N; ++i; @tile(16, @outer, @inner)) {
     f[i] = delta_x*delta_x * M_PI*M_PI * std::sin(M_PI * i * delta_x);
   }
 }
@@ -22,7 +22,7 @@
                         const float u_N,
                         float *u,
                         float *r) {
-  for (int i = 0; i <= N; ++i; @tile(16, @outer, @inner)) {
+  for (unsigned int i = 0; i <= N; ++i; @tile(16, @outer, @inner)) {
     if (i == 0){
       u[i+offset] = u_0;
     }
@@ -42,10 +42,10 @@
                         float *u,
                         float *u_star,
                         float *r) {
-  for (int i = 1; i < N; ++i; @tile(16, @outer, @inner)) {
-    u_star[offset[h] + i] = 0.5*(u[offset + i + 1] + u[offset + i - 1] + f[i]);
+  for (unsigned int i = 1; i < N; ++i; @tile(16, @outer, @inner)) {
+    u_star[offset + i] = 0.5*(u[offset + i + 1] + u[offset + i - 1] + f[i]);
   }
-  for (int i = 1; i < N; ++i; @tile(16, @outer, @inner)) {
+  for (unsigned int i = 1; i < N; ++i; @tile(16, @outer, @inner)) {
     r[offset + i] = weight * (u_star[offset + i] - u[offset + i]);
     u[offset + i] += r[offset + i];
   }
