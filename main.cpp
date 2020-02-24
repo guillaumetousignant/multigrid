@@ -37,7 +37,8 @@ int main(int argc, const char **argv) {
     occa::json args = parseArgs(argc_occa, argv_occa);
 
     occa::device device;
-    occa::kernel addVectors;
+    occa::kernel initialFConditions, initialConditions;
+    occa::kernel weighedJacobiTop;
     occa::memory f_GPU, u_GPU, u_star_GPU, r_GPU;
     occa::memory N_h_GPU, offset_GPU, delta_x_GPU;
 
@@ -96,6 +97,26 @@ int main(int argc, const char **argv) {
     // Residuals are cached, so that it can run in parallel
     std::vector<float> r(2*N+max_levels-2, 0.0);
 
+    // Initial grid parameters
+    for (unsigned int h = 1; h < max_levels; ++h) {
+        N_h[h] /= intExp2(h);
+        offset[h] = offset[h-1] + N_h[h-1] + 1;
+        delta_x[h] = 1.0/N_h[h];
+    }
+
+    // Initial f conditions
+    for (unsigned int i = 0; i <= N; ++i) {
+        f[i] = std::pow(delta_x[0], 2) * std::pow(M_PI, 2) * std::sin(M_PI * i * delta_x[0]);
+    }
+
+    // Initial conditions
+    for (unsigned int h = 0; h < max_levels; ++h) {
+        u[offset[h]] = 0.0;           // u(0) = 0
+        u[offset[h]+N_h[h]] = 0.0;    // u(1) = 0
+        r[offset[h]] = 0.0;           // r(0) = 0
+        r[offset[h]+N_h[h]] = 0.0;    // r(1) = 0
+    }
+
     // GPU vectors init
     N_h_GPU = device.malloc(max_levels, occa::dtype::float_);
     offset_GPU = device.malloc(max_levels, occa::dtype::float_);
@@ -109,31 +130,37 @@ int main(int argc, const char **argv) {
     u_star_GPU = device.malloc(2*N+max_levels-2, occa::dtype::float_);
     r_GPU = device.malloc(2*N+max_levels-2, occa::dtype::float_);
 
-    for (unsigned int h = 1; h < max_levels; ++h) {
-        N_h[h] /= intExp2(h);
-        offset[h] = offset[h-1] + N_h[h-1] + 1;
-        delta_x[h] = 1.0/N_h[h];
-    }
+    // Compile the kernel at run-time
+    initialFConditions = device.buildKernel("jacobi.okl",
+                                    "initialFConditions");
+    initialConditions = device.buildKernel("jacobi.okl",
+                                    "initialConditions");
+    weighedJacobiTop = device.buildKernel("jacobi.okl",
+                                    "weighedJacobiTop");
 
-
-
-    for (unsigned int i = 0; i <= N; ++i) {
-        f[i] = std::pow(delta_x[0], 2) * std::pow(M_PI, 2) * std::sin(M_PI * i * delta_x[0]);
-    }
+    // Initial f conditions
+    initialFConditions(N, delta_x[0], f_GPU);
 
     // Initial conditions
     for (unsigned int h = 0; h < max_levels; ++h) {
-        u[offset[h]] = 0.0;           // u(0) = 0
-        u[offset[h]+N_h[h]] = 0.0;    // u(1) = 0
-        r[offset[h]] = 0.0;           // r(0) = 0
-        r[offset[h]+N_h[h]] = 0.0;    // r(1) = 0
+        initialConditions(N_h[h], offset[h], 1.0, 0.0, 0.0, u_GPU, r_GPU);
     }
 
     // Jacobi iteration
     unsigned int h = 0;
     const float weight = 2.0/(1.0 + std::sqrt(1.0 + std::pow(std::cos(M_PI * delta_x[0]), 2))); // With a weight of 1, the original Jacobi is recovered
     float residual = 1.0;
+    float residual_GPU = 1.0;
     unsigned int n = 0;
+    unsigned int n_GPU = 0;
+
+    auto t_start_GPU = std::chrono::high_resolution_clock::now();
+    while (residual_GPU > tolerance) {
+        ++n;
+        weighedJacobiTop(N_h[h], offset[h], weight, f_GPU, u_GPU, u_star_GPU, r_GPU);
+        residual_GPU = 0.0;
+    }
+    auto t_end_GPU = std::chrono::high_resolution_clock::now();
 
     auto t_start = std::chrono::high_resolution_clock::now();
     while (residual > tolerance) {

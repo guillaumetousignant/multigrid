@@ -6,3 +6,47 @@
     ab[i] = a[i] + b[i];
   }
 }
+
+@kernel void initialFConditions(const unsigned int N,
+                        const float delta_x,
+                        float *f) {
+  for (int i = 0; i <= N; ++i; @tile(16, @outer, @inner)) {
+    f[i] = delta_x*delta_x * M_PI*M_PI * std::sin(M_PI * i * delta_x);
+  }
+}
+
+@kernel void initialConditions(const unsigned int N,
+                        const float offset,
+                        const float u_i,
+                        const float u_0,
+                        const float u_N,
+                        float *u,
+                        float *r) {
+  for (int i = 0; i <= N; ++i; @tile(16, @outer, @inner)) {
+    if (i == 0){
+      u[i+offset] = u_0;
+    }
+    else if (i == N) {
+      u[i+offset] = u_N;
+    }
+    else {
+      u[i+offset] = u_i;
+    }
+  }
+}
+
+@kernel void weighedJacobiTop(const unsigned int N,
+                        const unsigned int offset,
+                        const float weight,
+                        const float* *f,
+                        float *u,
+                        float *u_star,
+                        float *r) {
+  for (int i = 1; i < N; ++i; @tile(16, @outer, @inner)) {
+    u_star[offset[h] + i] = 0.5*(u[offset + i + 1] + u[offset + i - 1] + f[i]);
+  }
+  for (int i = 1; i < N; ++i; @tile(16, @outer, @inner)) {
+    r[offset + i] = weight * (u_star[offset + i] - u[offset + i]);
+    u[offset + i] += r[offset + i];
+  }
+}
