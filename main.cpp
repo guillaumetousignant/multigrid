@@ -97,8 +97,8 @@ int main(int argc, const char **argv) {
     float residual = 1.0;
     unsigned int n = 0;
     unsigned int n_V = 0;
-    const unsigned int n_relax_down = 5;    // Will actually do one more because of reiduals calculation
-    const unsigned int n_relax_up = 5;      // Will actually do one more because of reiduals calculation
+    const unsigned int n_relax_down = 100;    // Will actually do one more because of reiduals calculation
+    const unsigned int n_relax_up = 100;      // Will actually do one more because of reiduals calculation
     unsigned int level = 0;
 
     auto t_start = std::chrono::high_resolution_clock::now();
@@ -247,7 +247,7 @@ int main(int argc, const char **argv) {
     }
 
     std::cout << std::endl << "Iterations  max residual   max error       time taken [s]" << std::endl;
-    std::cout << n << " " << std::setw(15) << residual << " " << std::setw(15) << error << " " << std::setw(15) << std::chrono::duration<double, std::milli>(t_end-t_start).count()/1000.0 << std::endl;
+    std::cout << n_V << " " << std::setw(15) << residual << " " << std::setw(15) << error << " " << std::setw(15) << std::chrono::duration<double, std::milli>(t_end-t_start).count()/1000.0 << std::endl;
 
 
 
