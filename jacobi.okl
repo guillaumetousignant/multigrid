@@ -38,7 +38,7 @@
 @kernel void weighedJacobiTop(const unsigned int N,
                         const unsigned int offset,
                         const float weight,
-                        const float* *f,
+                        const float *f,
                         float *u,
                         float *u_star,
                         float *r) {
