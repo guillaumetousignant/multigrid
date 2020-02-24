@@ -129,7 +129,7 @@ int main(int argc, const char **argv) {
             ++level;
             // Restriction
             for (unsigned int i = 1; i < N_h[level]; ++i) {
-                r[offset[level] + i] = 0.25*(r[2*(offset[level-1] + i) - 1] + r[2*(offset[level-1] + i) + 1] + 2.0*r[2*(offset[level-1] + i)]);
+                r[offset[level] + i] = 0.25*(r[offset[level-1] + 2*i - 1] + r[offset[level-1] + 2*i + 1] + 2.0*r[offset[level-1] + 2*i]);
             }
 
             // Relaxation steps
