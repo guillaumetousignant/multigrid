@@ -54,7 +54,7 @@ int main(int argc, const char **argv) {
     }
 
     // Vector of u containing all the grids
-    std::vector<float> u(2*(N+1), 1.0); // 1 is the initial guess
+    std::vector<float> u(2*N+max_levels-2, 1.0); // 1 is the initial guess
 
     // Vector containg number of elements for all levels
     std::vector<float> N_h(max_levels, N);
@@ -69,10 +69,10 @@ int main(int argc, const char **argv) {
     std::vector<float> f(N+1, 0.0);
 
     // u_star is cached, so that it can be computed before the u_i start being updated
-    std::vector<float> u_star(2*(N+1), 0.0);
+    std::vector<float> u_star(2*N+max_levels-2, 0.0);
 
     // Residuals are cached, so that it can run in parallel
-    std::vector<float> r(2*(N+1), 0.0);
+    std::vector<float> r(2*N+max_levels-2, 0.0);
 
     for (unsigned int h = 1; h < max_levels; ++h) {
         N_h[h] /= intExp2(h);
@@ -86,8 +86,10 @@ int main(int argc, const char **argv) {
 
     // Initial conditions
     for (unsigned int h = 0; h < max_levels; ++h) {
-        u[offset[h]] = 0;           // u(0) = 0
-        u[offset[h]+N_h[h]] = 0;    // u(1) = 0
+        u[offset[h]] = 0.0;           // u(0) = 0
+        u[offset[h]+N_h[h]] = 0.0;    // u(1) = 0
+        r[offset[h]] = 0.0;           // r(0) = 0
+        r[offset[h]+N_h[h]] = 0.0;    // r(1) = 0
     }
 
     // Jacobi iteration
