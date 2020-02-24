@@ -243,11 +243,11 @@ int main(int argc, const char **argv) {
 
     std::cout << "i      numerical      analytical        residual           error" << std::endl;
     for (unsigned int i = 0; i <= N; ++i) {
-        std::cout << i << " " << std::setw(15) << u[offset[0] + i] << " " << std::setw(15) << std::sin(M_PI * i * delta_x[0]) << std::setw(15) << r[offset[0] + i] << " " << " " << std::setw(15) << std::abs(u[offset[0] + i] - std::sin(M_PI * i * delta_x[0])) << std::endl;
+        std::cout << i << " " << std::setw(15) << u[offset[0] + i] << " " << std::setw(15) << std::sin(M_PI * i * delta_x[0]) << " " << std::setw(15) << r[offset[0] + i] << " " << std::setw(15) << std::abs(u[offset[0] + i] - std::sin(M_PI * i * delta_x[0])) << std::endl;
     }
 
-    std::cout << std::endl << "Iterations  max residual   max error       time taken [s]" << std::endl;
-    std::cout << n_V << " " << std::setw(15) << residual << " " << std::setw(15) << error << " " << std::setw(15) << std::chrono::duration<double, std::milli>(t_end-t_start).count()/1000.0 << std::endl;
+    std::cout << std::endl << "Iterations  max residual   max error     time taken [s]      steps" << std::endl;
+    std::cout << n_V << " " << std::setw(15) << residual << " " << std::setw(15) << error << " " << std::setw(15) << std::chrono::duration<double, std::milli>(t_end-t_start).count()/1000.0 << " " << std::setw(15) << n << std::endl;
 
 
 
