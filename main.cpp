@@ -35,6 +35,27 @@ int main(int argc, const char **argv) {
         argv_occa = argv + 1;
     }
     occa::json args = parseArgs(argc_occa, argv_occa);
+    
+    occa::device device;
+    occa::kernel addVectors;
+    occa::memory o_a, o_b, o_ab;
+
+    //---[ Device setup with string flags ]-------------------
+    device.setup((std::string) args["options/device"]);
+
+    // device.setup("mode: 'Serial'");
+
+    // device.setup("mode     : 'OpenMP', "
+    //              "schedule : 'compact', "
+    //              "chunk    : 10");
+
+    // device.setup("mode        : 'OpenCL', "
+    //              "platform_id : 0, "
+    //              "device_id   : 1");
+
+    // device.setup("mode      : 'CUDA', "
+    //              "device_id : 0");
+    //========================================================
 
     // Figuring out how many times we can coarsen
     unsigned int max_levels = 1;
