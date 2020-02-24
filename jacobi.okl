@@ -50,3 +50,37 @@
     u[offset + i] += r[offset + i];
   }
 }
+
+// From occa example #4, from David Medina
+@kernel void reduction(const int N,
+                       const unsigned int offset,
+                       const float *r,
+                       float *blockSum) {
+  
+  // Partial reduction of vector using loop tiles of size block (power of 2)
+  for (int group = 0; group < ((N + 256 - 1) / 256); ++group; @outer) { // 256 is block size
+    @shared float s_vec[256];
+
+    for (int item = 0; item < 256; ++item; @inner) {
+      if ((group * 256 + item) < N) {
+        s_vec[item] = r[offset + group * 256 + item];
+      } else {
+        s_vec[item] = 0;
+      }
+    }
+
+    for (int alive = ((256 + 1) / 2); 0 < alive; alive /= 2) {
+      for (int item = 0; item < 256; ++item; @inner) {
+        if (item < alive) {
+          s_vec[item] = std::max(s_vec[item], s_vec[item + alive]);
+        }
+      }
+    }
+
+    for (int item = 0; item < 256; ++item; @inner) {
+      if (item == 0) {
+        blockSum[group] = s_vec[0];
+      }
+    }
+  }
+}

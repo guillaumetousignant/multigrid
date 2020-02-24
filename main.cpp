@@ -39,8 +39,10 @@ int main(int argc, const char **argv) {
     occa::device device;
     occa::kernel initialFConditions, initialConditions;
     occa::kernel weighedJacobiTop;
+    occa::kernel reduction;
     occa::memory f_GPU, u_GPU, u_star_GPU, r_GPU;
     occa::memory N_h_GPU, offset_GPU, delta_x_GPU;
+    occa::memory block_sum_GPU;
 
     //---[ Device setup with string flags ]-------------------
     device.setup((std::string) args["options/device"]);
@@ -66,6 +68,12 @@ int main(int argc, const char **argv) {
         ++max_levels;
         N_at_h /= 2;
     }
+
+    // Reduction parameters
+    unsigned int block   = 256; // Block size ALSO CHANGE IN KERNEL
+    unsigned int max_blocks  = (N + block - 1)/block;    
+    std::vector<float> block_sum(max_blocks, 0.0);
+    block_sum_GPU = device.malloc(max_blocks, occa::dtype::float_);
 
     std::cout << "N: " << N << std::endl;
     std::cout << "Max levels: " << max_levels << std::endl;
@@ -137,6 +145,8 @@ int main(int argc, const char **argv) {
                                     "initialConditions");
     weighedJacobiTop = device.buildKernel("jacobi.okl",
                                     "weighedJacobiTop");
+    reduction = device.buildKernel("jacobi.okl",
+                                    "reduction");
 
     // Initial f conditions
     initialFConditions(N, delta_x[0], f_GPU);
@@ -158,7 +168,16 @@ int main(int argc, const char **argv) {
     while (residual_GPU > tolerance) {
         ++n;
         weighedJacobiTop(N_h[h], offset[h], weight, f_GPU, u_GPU, u_star_GPU, r_GPU);
+        reduction(N_h[h], offset[h], r_GPU, block_sum_GPU);
+
+        // Host <- Device
+        block_sum_GPU.copyTo(block_sum.data());
+
+        // Finalize the reduction in the host
         residual_GPU = 0.0;
+        for (unsigned int i = 0; i < (N + block - 1)/block; ++i) {
+            residual_GPU = std::max(residual_GPU, block_sum[i]);
+        }
     }
     auto t_end_GPU = std::chrono::high_resolution_clock::now();
 
