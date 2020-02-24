@@ -86,10 +86,10 @@ int main(int argc, const char **argv) {
 
     // Initial conditions
     for (unsigned int h = 0; h < max_levels; ++h) {
-        u[offset[h]] = 0;           // u(0) = 0
-        u[offset[h]+N_h[h]] = 0;    // u(1) = 0
-        r[offset[h]] = 0;           // r(0) = 0
-        r[offset[h]+N_h[h]] = 0;    // r(1) = 0
+        u[offset[h]] = 0.0;           // u(0) = 0
+        u[offset[h]+N_h[h]] = 0.0;    // u(1) = 0
+        r[offset[h]] = 0.0;           // r(0) = 0
+        r[offset[h]+N_h[h]] = 0.0;    // r(1) = 0
     }
 
     // Jacobi iteration
