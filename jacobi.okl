@@ -32,6 +32,7 @@
     else {
       u[i+offset] = u_i;
     }
+    r[i+offset] = 0.0;
   }
 }
 
