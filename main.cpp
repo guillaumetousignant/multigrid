@@ -219,9 +219,6 @@ int main(int argc, const char **argv) {
         std::cout << i << " " << std::setw(15) << u[offset[h] + i] << " " << std::setw(15) << std::sin(M_PI * i * delta_x[h]) << std::setw(15) << r[offset[h] + i] << " " << " " << std::setw(15) << std::abs(u[offset[h] + i] - std::sin(M_PI * i * delta_x[h])) << std::endl;
     }
 
-    std::cout << std::endl << "Iterations  max residual   max error       time taken [s]" << std::endl;
-    std::cout << n << " " << std::setw(15) << residual << " " << std::setw(15) << error << " " << std::setw(15) << std::chrono::duration<double, std::milli>(t_end-t_start).count()/1000.0 << std::endl;
-
     // Host <- Device
     u_GPU.copyTo(u.data());
     r_GPU.copyTo(r.data());
@@ -237,6 +234,11 @@ int main(int argc, const char **argv) {
         std::cout << i << " " << std::setw(15) << u[offset[h] + i] << " " << std::setw(15) << std::sin(M_PI * i * delta_x[h]) << std::setw(15) << r[offset[h] + i] << " " << " " << std::setw(15) << std::abs(u[offset[h] + i] - std::sin(M_PI * i * delta_x[h])) << std::endl;
     }
 
+    std::cout << std::endl << "CPU result" << std::endl;
+    std::cout << std::endl << "Iterations  max residual   max error       time taken [s]" << std::endl;
+    std::cout << n << " " << std::setw(15) << residual << " " << std::setw(15) << error << " " << std::setw(15) << std::chrono::duration<double, std::milli>(t_end-t_start).count()/1000.0 << std::endl;
+
+    std::cout << std::endl << "GPU result" << std::endl;
     std::cout << std::endl << "Iterations  max residual   max error       time taken [s]" << std::endl;
     std::cout << n_GPU << " " << std::setw(15) << residual_GPU << " " << std::setw(15) << error_GPU << " " << std::setw(15) << std::chrono::duration<double, std::milli>(t_end_GPU-t_start_GPU).count()/1000.0 << std::endl;
 
