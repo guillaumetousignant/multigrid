@@ -72,7 +72,7 @@ int main(int argc, const char **argv) {
     // Reduction parameters
     unsigned int block   = 256; // Block size ALSO CHANGE IN KERNEL
     unsigned int max_blocks  = (N + block - 1)/block;    
-    std::vector<float> block_sum(max_blocks, 0.0);
+    std::vector<float> block_max(max_blocks, 0.0);
     block_sum_GPU = device.malloc(max_blocks, occa::dtype::float_);
 
     std::cout << "N: " << N << std::endl;
@@ -171,12 +171,12 @@ int main(int argc, const char **argv) {
         reduction(N_h[h], offset[h], r_GPU, block_sum_GPU);
 
         // Host <- Device
-        block_sum_GPU.copyTo(block_sum.data());
+        block_sum_GPU.copyTo(block_max.data());
 
         // Finalize the reduction in the host
         residual_GPU = 0.0;
         for (unsigned int i = 0; i < (N + block - 1)/block; ++i) {
-            residual_GPU = std::max(residual_GPU, block_sum[i]);
+            residual_GPU = std::max(residual_GPU, std::abs(block_max[i]));
         }
     }
     auto t_end_GPU = std::chrono::high_resolution_clock::now();
