@@ -19,7 +19,7 @@ void relaxation(std::vector<float> &u, std::vector<float> &u_star, const std::ve
     }
 }
 
-void residuals(std::vector<float> &u, std::vector<float> &u_star, std::vector<float> &r, const std::vector<float> &f, int N, int offset, double weight, int n_iter) {
+void residuals(std::vector<float> &u, std::vector<float> &u_star, std::vector<float> &r, const std::vector<float> &f, int N, int offset, double weight) {
     for (int i = 1; i < N; ++i) {
         u_star[offset + i] = 0.5*(u[offset + i + 1] + u[offset + i - 1] + f[offset + i]);
     }
@@ -183,7 +183,7 @@ int main(int argc, const char **argv) {
         n += n_relax_down;
 
         // Calculate residuals
-        residuals(u, u_star, r, f, N_h[0], offset[0], weight, n_relax_down);
+        residuals(u, u_star, r, f, N_h[0], offset[0], weight);
         ++n;
 
         // Going down
@@ -197,7 +197,7 @@ int main(int argc, const char **argv) {
             n += n_relax_down;
 
             // Calculate residuals
-            residuals(u, u_star, r, f, N_h[level], offset[level], weight, n_relax_down);
+            residuals(u, u_star, r, f, N_h[level], offset[level], weight);
             ++n;
         }
 
@@ -214,7 +214,7 @@ int main(int argc, const char **argv) {
             n += n_relax_up;
 
             // Calculate residuals
-            residuals(u, u_star, r, f, N_h[level], offset[level], weight, n_relax_down);
+            residuals(u, u_star, r, f, N_h[level], offset[level], weight);
             ++n;
         }        
     }
