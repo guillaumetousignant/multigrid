@@ -19,17 +19,17 @@ void relaxation(std::vector<float> &u, std::vector<float> &u_star, const std::ve
     }
 }
 
-void residuals(std::vector<float> &u, std::vector<float> &u_star, std::vector<float> r, const std::vector<float> &f, int N, int offset, double weight, int n_iter) {
+void residuals(std::vector<float> &u, std::vector<float> &u_star, std::vector<float> &r, const std::vector<float> &f, int N, int offset, double weight, int n_iter) {
     for (int i = 1; i < N; ++i) {
-            u_star[offset + i] = 0.5*(u[offset + i + 1] + u[offset + i - 1] + f[offset + i]);
-        }
-        for (int i = 1; i < N; ++i) {
-            r[offset + i] = weight * (u_star[offset + i] - u[offset + i]);
-            u[offset + i] += r[offset + i];
-        }
+        u_star[offset + i] = 0.5*(u[offset + i + 1] + u[offset + i - 1] + f[offset + i]);
+    }
+    for (int i = 1; i < N; ++i) {
+        r[offset + i] = weight * (u_star[offset + i] - u[offset + i]);
+        u[offset + i] += r[offset + i];
+    }
 }
 
-void restriction(std::vector<float> &u, const std::vector<float> r, std::vector<float> &f, int N, int offset_coarse, int offset_fine) {
+void restriction(std::vector<float> &u, const std::vector<float> &r, std::vector<float> &f, int N, int offset_coarse, int offset_fine) {
     for (int i = 1; i < N; ++i) {
         f[offset_coarse + i] = 0.25*(r[offset_fine + 2*i - 1] + r[offset_fine + 2*i + 1] + 2.0*r[offset_fine + 2*i]);
         u[offset_coarse + i] = 0.0; // Initial guess for the velocity correction
@@ -43,7 +43,7 @@ void prolongation(std::vector<float> &u, int N, int offset_coarse, int offset_fi
     }
 }
 
-float residual_max(const std::vector<float> r, int N, int offset) {
+float residual_max(const std::vector<float> &r, int N, int offset) {
     float residual = 0.0;
     for (int i = 1; i < N; ++i) {
         residual = std::max(residual, std::abs(r[offset + i]));
@@ -51,7 +51,7 @@ float residual_max(const std::vector<float> r, int N, int offset) {
     return residual;
 }
 
-float residual_norm(const std::vector<float> r, int N, int offset) {
+float residual_norm(const std::vector<float> &r, int N, int offset) {
     float residual = 0.0;
     for (int i = 1; i < N; ++i) {
             residual += std::pow(r[offset + i], 2);
