@@ -97,8 +97,8 @@ int main(int argc, const char **argv) {
     float residual = 1.0;
     unsigned int n = 0;
     unsigned int n_V = 0;
-    const unsigned int n_relax_down = 100;    // Will actually do one more because of residuals calculation
-    const unsigned int n_relax_up = 100;      // Will actually do one more because of residuals calculation
+    const unsigned int n_relax_down = 5;    // Will actually do one more because of residuals calculation
+    const unsigned int n_relax_up = 5;      // Will actually do one more because of residuals calculation
     unsigned int level = 0;
 
     auto t_start = std::chrono::high_resolution_clock::now();
