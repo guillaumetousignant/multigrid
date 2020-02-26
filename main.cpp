@@ -156,6 +156,7 @@ int main(int argc, const char **argv) {
         delta_x[h] = 1.0/N_h[h];
     }
 
+    // f initial conditions
     for (int i = 0; i <= N; ++i) {
         f[offset[0] + i] = std::pow(delta_x[0], 2) * std::pow(M_PI, 2) * std::sin(M_PI * i * delta_x[0]);
     }

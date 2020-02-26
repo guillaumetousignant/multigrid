@@ -1,12 +1,3 @@
-@kernel void addVectors(const int entries,
-                        const float *a,
-                        const float *b,
-                        float *ab) {
-  for (int i = 0; i < entries; ++i; @tile(16, @outer, @inner)) {
-    ab[i] = a[i] + b[i];
-  }
-}
-
 @kernel void initialFConditions(const unsigned int N,
                         const float delta_x,
                         float *f) {
@@ -25,14 +16,16 @@
   for (unsigned int i = 0; i <= N; ++i; @tile(16, @outer, @inner)) {
     if (i == 0){
       u[i+offset] = u_0;
+      r[i+offset] = 0.0;
     }
     else if (i == N) {
       u[i+offset] = u_N;
+      r[i+offset] = 0.0;
     }
     else {
       u[i+offset] = u_i;
+      r[i+offset] = 1.0;
     }
-    r[i+offset] = 0.0;
   }
 }
 
