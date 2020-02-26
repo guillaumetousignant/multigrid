@@ -122,6 +122,7 @@ int main(int argc, const char **argv) {
     std::cout << "N: " << N << std::endl;
     std::cout << "Max levels: " << max_levels << std::endl;
     std::cout << "Levels: " << levels << std::endl;
+    std::cout << "Tolerance: " << tolerance << std::endl;
 
     if (max_levels < levels) {
         std::cout << "Error: max levels is " << max_levels << " and requested levels is " << levels << ". Exiting." << std::endl;
