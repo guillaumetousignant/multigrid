@@ -59,15 +59,30 @@
   }
 }
 
-@kernel void restriction(const int N,
+@kernel void restriction(const int N_coarse,
                         const int offset_coarse,
                         const int offset_fine,
-                        ) {
+                        float *f,
+                        float *u,
+                        const float *r) {
+  for (int i = 1; i < N_coarse; ++i; @tile(16, @outer, @inner)) {
+    f[offset_coarse + i] = 0.25*(r[offset_fine + 2*i - 1] + r[offset_fine + 2*i + 1] + 2.0*r[offset_fine + 2*i]);
+    u[offset_coarse + i] = 0.0; // Initial guess for the velocity correction
+  }
+}
 
+@kernel void prolongation(const int N_coarse,
+                        const int offset_coarse,
+                        const int offset_fine,
+                        float *u) {
+  for (int i = 0; i < N_coarse; ++i; @tile(16, @outer, @inner)) {
+    u[offset_fine + 2*i] += u[offset_coarse + i];
+    u[offset_fine + 2*i + 1] += 0.5 * (u[offset_coarse + i] + u[offset_coarse + i + 1]);
+  }
 }
 
 // From occa example #4, from David Medina
-@kernel void reduction(const int N,
+@kernel void reduction_max(const int N,
                        const int offset,
                        const float *r,
                        float *block_max) {
@@ -95,6 +110,40 @@
     for (int item = 0; item < 256; ++item; @inner) {
       if (item == 0) {
         block_max[group] = s_vec[0];
+      }
+    }
+  }
+}
+
+// From occa example #4, from David Medina
+@kernel void reduction_norm(const int N,
+                       const int offset,
+                       const float *r,
+                       float *block_sum) {
+  
+  // Partial reduction of vector using loop tiles of size block (power of 2)
+  for (int group = 0; group < ((N + 256 - 1) / 256); ++group; @outer) { // 256 is block size
+    @shared float s_vec[256];
+
+    for (int item = 0; item < 256; ++item; @inner) {
+      if ((group * 256 + item) < N) {
+        s_vec[item] = r[offset + group * 256 + item];
+      } else {
+        s_vec[item] = 0;
+      }
+    }
+
+    for (int alive = ((256 + 1) / 2); 0 < alive; alive /= 2) {
+      for (int item = 0; item < 256; ++item; @inner) {
+        if (item < alive) {
+          s_vec[item] += s_vec[item + alive];
+        }
+      }
+    }
+
+    for (int item = 0; item < 256; ++item; @inner) {
+      if (item == 0) {
+        block_sum[group] = s_vec[0];
       }
     }
   }
