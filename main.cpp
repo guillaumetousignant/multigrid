@@ -207,7 +207,7 @@ int main(int argc, const char **argv) {
         for (int level = levels - 2; level >= 0; --level){
             
             // Prolongation
-            prolongation(u, N_h[level], offset[level + 1], offset[level]);
+            prolongation(u, N_h[level+1], offset[level + 1], offset[level]);
 
             // Relaxation steps
             relaxation(u, u_star, f, N_h[level], offset[level], weight, n_relax_up);
