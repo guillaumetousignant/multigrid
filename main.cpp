@@ -8,6 +8,81 @@ occa::json parseArgs(int argc, const char **argv);
 
 unsigned int intExp2(unsigned int p);
 
+void relaxation(std::vector<float> &u, std::vector<float> &u_star, const std::vector<float> &f, unsigned int N, unsigned int offset, double weight, unsigned int n_iter) {
+    for (unsigned int k = 0; k < n_iter; ++k){
+        for (unsigned int i = 1; i < N; ++i) {
+            u_star[offset + i] = 0.5*(u[offset + i + 1] + u[offset + i - 1] + f[offset + i]);
+        }
+        for (unsigned int i = 1; i < N; ++i) {
+            u[offset + i] += weight * (u_star[offset + i] - u[offset + i]);
+        }
+    }
+}
+
+void residuals(std::vector<float> &u, std::vector<float> &u_star, std::vector<float> r, const std::vector<float> &f, unsigned int N, unsigned int offset, double weight, unsigned int n_iter) {
+    for (unsigned int i = 1; i < N; ++i) {
+            u_star[offset + i] = 0.5*(u[offset + i + 1] + u[offset + i - 1] + f[offset + i]);
+        }
+        for (unsigned int i = 1; i < N; ++i) {
+            r[offset + i] = weight * (u_star[offset + i] - u[offset + i]);
+            u[offset + i] += r[offset + i];
+        }
+}
+
+void restriction(std::vector<float> &u, const std::vector<float> r, std::vector<float> &f, unsigned int N, unsigned int offset_coarse, unsigned int offset_fine) {
+    for (unsigned int i = 1; i < N; ++i) {
+        f[offset_coarse + i] = 0.25*(r[offset_fine + 2*i - 1] + r[offset_fine + 2*i + 1] + 2.0*r[offset_fine + 2*i]);
+        u[offset_coarse + i] = 0.0; // Initial guess for the velocity correction
+    }
+}
+
+void prolongation(std::vector<float> &u, unsigned int N, unsigned int offset_coarse, unsigned int offset_fine) {
+    for (unsigned int i = 0; i < N; ++i) {
+        u[offset_fine + 2*i] += u[offset_coarse + i];
+        u[offset_fine + 2*i + 1] += 0.5 * (u[offset_coarse + i] + u[offset_coarse + i + 1]);
+    }
+}
+
+float residual_max(const std::vector<float> r, unsigned int N, unsigned int offset) {
+    float residual = 0.0;
+    for (unsigned int i = 1; i < N; ++i) {
+        residual = std::max(residual, std::abs(r[offset + i]));
+    }
+    return residual;
+}
+
+float residual_norm(const std::vector<float> r, unsigned int N, unsigned int offset) {
+    float residual = 0.0;
+    for (unsigned int i = 1; i < N; ++i) {
+            residual += std::pow(r[offset + i], 2);
+        }
+    return std::sqrt(residual);
+}
+
+float analytical(float x) {
+    return std::sin(M_PI * x);
+}
+
+float error(const std::vector<float> &u, unsigned int offset, float delta_x, unsigned int i) {
+    return u[offset + i] - analytical(i * delta_x);
+}
+
+float error_max(const std::vector<float> &u, unsigned int N, unsigned int offset, float delta_x) {
+    float value = 0.0;
+    for (unsigned int i = 1; i <= N; ++i) {
+        value = std::max(value, std::abs(u[offset + i] - analytical(i * delta_x)));
+    }
+    return value;
+}
+
+float error_norm(const std::vector<float> &u, unsigned int N, unsigned int offset, float delta_x) {
+    float value = 0.0;
+    for (unsigned int i = 1; i <= N; ++i) {
+        value += std::pow(error(u, offset, delta_x, i), 2);
+    }
+    return std::sqrt(value);
+}
+
 int main(int argc, const char **argv) {
     // Parameters
     unsigned int N = 16;        // First command line input
@@ -72,7 +147,7 @@ int main(int argc, const char **argv) {
     std::vector<float> u_star(2*N+max_levels-2, 0.0);
 
     // Residuals are cached, so that it can run in parallel
-    std::vector<float> r(2*N+max_levels-2, 0.0);
+    std::vector<float> r(2*N+max_levels-2, 1.0);
 
     for (unsigned int h = 1; h < max_levels; ++h) {
         N_h[h] /= intExp2(h);
@@ -94,7 +169,6 @@ int main(int argc, const char **argv) {
 
     // Jacobi iteration
     const float weight = 2.0/(1.0 + std::sqrt(1.0 + std::pow(std::cos(M_PI * delta_x[0]), 2))); // With a weight of 1, the original Jacobi is recovered
-    float residual = 1.0;
     unsigned int n = 0;
     unsigned int n_V = 0;
     const unsigned int n_relax_down = 5;    // Will actually do one more because of residuals calculation
@@ -102,60 +176,31 @@ int main(int argc, const char **argv) {
     unsigned int level = 0;
 
     auto t_start = std::chrono::high_resolution_clock::now();
-    while (residual > tolerance) {
+    while (residual_norm(r, N_h[level], offset[level]) > tolerance) {
         ++n_V;
 
         // Relaxation steps
-        for (unsigned int k = 0; k < n_relax_down; ++k){
-            ++n;
-            for (unsigned int i = 1; i < N_h[level]; ++i) {
-                u_star[offset[level] + i] = 0.5*(u[offset[level] + i + 1] + u[offset[level] + i - 1] + f[offset[level] + i]);
-            }
-            for (unsigned int i = 1; i < N_h[level]; ++i) {
-                u[offset[level] + i] += weight * (u_star[offset[level] + i] - u[offset[level] + i]);
-            }
-        }
+        relaxation(u, u_star, f, N_h[level], offset[level], weight, n_relax_down);
+        n += n_relax_down;
 
         // Calculate residuals
+        residuals(u, u_star, r, f, N_h[level], offset[level], weight, n_relax_down);
         ++n;
-        for (unsigned int i = 1; i < N_h[level]; ++i) {
-            u_star[offset[level] + i] = 0.5*(u[offset[level] + i + 1] + u[offset[level] + i - 1] + f[offset[level] + i]);
-        }
-        for (unsigned int i = 1; i < N_h[level]; ++i) {
-            r[offset[level] + i] = weight * (u_star[offset[level] + i] - u[offset[level] + i]);
-            u[offset[level] + i] += r[offset[level] + i];
-        }
 
         // Going down
         while (level < levels-1){
             ++level;
 
             // Restriction
-            for (unsigned int i = 1; i < N_h[level]; ++i) {
-                f[offset[level] + i] = 0.25*(r[offset[level-1] + 2*i - 1] + r[offset[level-1] + 2*i + 1] + 2.0*r[offset[level-1] + 2*i]);
-                u[offset[level] + i] = 0.0; // Initial guess for the velocity correction
-            }
+            restriction(u, r, f, N_h[level], offset[level], offset[level - 1]);
 
             // Relaxation steps
-            for (unsigned int k = 0; k < n_relax_down; ++k){
-                ++n;
-                for (unsigned int i = 1; i < N_h[level]; ++i) {
-                    u_star[offset[level] + i] = 0.5*(u[offset[level] + i + 1] + u[offset[level] + i - 1] + f[offset[level] + i]);
-                }
-                for (unsigned int i = 1; i < N_h[level]; ++i) {
-                    u[offset[level] + i] += weight * (u_star[offset[level] + i] - u[offset[level] + i]);
-                }
-            }
+            relaxation(u, u_star, f, N_h[level], offset[level], weight, n_relax_down);
+            n += n_relax_down;
 
             // Calculate residuals
+            residuals(u, u_star, r, f, N_h[level], offset[level], weight, n_relax_down);
             ++n;
-            for (unsigned int i = 1; i < N_h[level]; ++i) {
-                u_star[offset[level] + i] = 0.5*(u[offset[level] + i + 1] + u[offset[level] + i - 1] + f[offset[level] + i]);
-            }
-            for (unsigned int i = 1; i < N_h[level]; ++i) {
-                r[offset[level] + i] = weight * (u_star[offset[level] + i] - u[offset[level] + i]);
-                u[offset[level] + i] += r[offset[level] + i];
-            }
         }
 
         // Solve fully here?
@@ -165,136 +210,27 @@ int main(int argc, const char **argv) {
             --level;
             
             // Prolongation
-            for (unsigned int i = 0; i < N_h[level+1]; ++i) {
-                u[offset[level] + 2*i] += u[offset[level+1] + i];
-                u[offset[level] + 2*i + 1] += 0.5 * (u[offset[level+1] + i] + u[offset[level+1] + i + 1]);
-            }
+            prolongation(u, N_h[level], offset[level + 1], offset[level]);
 
             // Relaxation steps
-            for (unsigned int k = 0; k < n_relax_up; ++k){
-                ++n;
-                for (unsigned int i = 1; i < N_h[level]; ++i) {
-                    u_star[offset[level] + i] = 0.5*(u[offset[level] + i + 1] + u[offset[level] + i - 1] + f[offset[level] + i]);
-                }
-                for (unsigned int i = 1; i < N_h[level]; ++i) {
-                    u[offset[level] + i] += weight * (u_star[offset[level] + i] - u[offset[level] + i]);
-                }
-            }
+            relaxation(u, u_star, f, N_h[level], offset[level], weight, n_relax_up);
+            n += n_relax_up;
 
             // Calculate residuals
+            residuals(u, u_star, r, f, N_h[level], offset[level], weight, n_relax_down);
             ++n;
-            for (unsigned int i = 1; i < N_h[level]; ++i) {
-                u_star[offset[level] + i] = 0.5*(u[offset[level] + i + 1] + u[offset[level] + i - 1] + f[offset[level] + i]);
-            }
-            for (unsigned int i = 1; i < N_h[level]; ++i) {
-                r[offset[level] + i] = weight * (u_star[offset[level] + i] - u[offset[level] + i]);
-                u[offset[level] + i] += r[offset[level] + i];
-            }
         }        
-
-        // Norm
-        residual = 0.0;
-        for (unsigned int i = 1; i < N; ++i) {
-            residual += std::pow(r[offset[level] + i], 2);
-        }
-        residual = std::sqrt(residual);
-
-        // Max
-        /*residual = 0.0;
-        for (unsigned int i = 1; i < N; ++i) {
-            residual = std::max(residual, std::abs(r[offset[level] + i]));
-        }*/
     }
     auto t_end = std::chrono::high_resolution_clock::now();
 
     // Display section
-    double error = 0.0;
-    for (unsigned int i = 1; i <= N; ++i) {
-        error = std::max(error, std::abs(u[offset[0] + i] - std::sin(M_PI * i * delta_x[0])));
-    }
-
     std::cout << "i      numerical      analytical        residual           error" << std::endl;
     for (unsigned int i = 0; i <= N; ++i) {
-        std::cout << i << " " << std::setw(15) << u[offset[0] + i] << " " << std::setw(15) << std::sin(M_PI * i * delta_x[0]) << " " << std::setw(15) << r[offset[0] + i] << " " << std::setw(15) << std::abs(u[offset[0] + i] - std::sin(M_PI * i * delta_x[0])) << std::endl;
+        std::cout << i << " " << std::setw(15) << u[offset[0] + i] << " " << std::setw(15) << analytical(i * delta_x[0]) << " " << std::setw(15) << r[offset[0] + i] << " " << std::setw(15) << std::abs(error(u, offset[0], delta_x[0], i)) << std::endl;
     }
 
     std::cout << std::endl << "Iterations  residual norm  error norm    time taken [s]      steps" << std::endl;
-    std::cout << n_V << " " << std::setw(15) << residual << " " << std::setw(15) << error << " " << std::setw(15) << std::chrono::duration<double, std::milli>(t_end-t_start).count()/1000.0 << " " << std::setw(15) << n << std::endl;
-
-
-
-    /*
-    int entries = 5;
-
-    float *a  = new float[entries];
-    float *b  = new float[entries];
-    float *ab = new float[entries];
-
-    for (int i = 0; i < entries; ++i) {
-        a[i]  = i;
-        b[i]  = 1 - i;
-        ab[i] = 0;
-    }
-
-    occa::device device;
-    occa::kernel addVectors;
-    occa::memory o_a, o_b, o_ab;
-
-    //---[ Device setup with string flags ]-------------------
-    device.setup((std::string) args["options/device"]);
-
-    // device.setup("mode: 'Serial'");
-
-    // device.setup("mode     : 'OpenMP', "
-    //              "schedule : 'compact', "
-    //              "chunk    : 10");
-
-    // device.setup("mode        : 'OpenCL', "
-    //              "platform_id : 0, "
-    //              "device_id   : 1");
-
-    // device.setup("mode      : 'CUDA', "
-    //              "device_id : 0");
-    //========================================================
-
-    // Allocate memory on the device
-    o_a  = device.malloc(entries, occa::dtype::float_);
-    // Primitive types are available by template
-    o_b  = device.malloc(entries, occa::dtype::get<float>());
-
-    // We can also allocate memory without a dtype
-    // WARNING: This will disable runtime type checking
-    o_ab = device.malloc(entries * sizeof(float));
-
-    // Compile the kernel at run-time
-    addVectors = device.buildKernel("addVectors.okl",
-                                    "addVectors");
-
-    // Copy memory to the device
-    o_a.copyFrom(a);
-    o_b.copyFrom(b);
-
-    // Launch device kernel
-    addVectors(entries, o_a, o_b, o_ab);
-
-    // Copy result to the host
-    o_ab.copyTo(ab);
-
-    // Assert values
-    for (int i = 0; i < 5; ++i) {
-        std::cout << i << ": " << ab[i] << '\n';
-    }
-    for (int i = 0; i < entries; ++i) {
-        if (ab[i] != (a[i] + b[i])) {
-        throw 1;
-        }
-    }
-
-    // Free host memory
-    delete [] a;
-    delete [] b;
-    delete [] ab;
-    */
+    std::cout << n_V << " " << std::setw(15) << residual_norm(r, N_h[level], offset[level]) << " " << std::setw(15) << error_norm(u, N_h[0], offset[0], delta_x[0]) << " " << std::setw(15) << std::chrono::duration<double, std::milli>(t_end-t_start).count()/1000.0 << " " << std::setw(15) << n << std::endl;
 
     return 0;
 }
@@ -325,8 +261,7 @@ occa::json parseArgs(int argc, const char **argv) {
     return args;
 }
 
-unsigned int intExp2(unsigned int p)
-{
+unsigned int intExp2(unsigned int p) {
   if (p == 0) return 1;
   if (p == 1) return 2;
 
