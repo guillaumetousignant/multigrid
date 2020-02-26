@@ -131,8 +131,9 @@ int main(int argc, const char **argv) {
             ++level;
 
             // Restriction
-            for (unsigned int i = 1; i < N_h[level]; ++i) { // Also retrict u?
+            for (unsigned int i = 1; i < N_h[level]; ++i) {
                 f[offset[level] + i] = 0.25*(r[offset[level-1] + 2*i - 1] + r[offset[level-1] + 2*i + 1] + 2.0*r[offset[level-1] + 2*i]);
+                u[offset[level] + i] = 0.0; // Initial guess for the velocity correction
             }
 
             // Relaxation steps
