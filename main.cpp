@@ -226,11 +226,11 @@ int main(int argc, const char **argv) {
     // Display section
     std::cout << "i      numerical      analytical        residual           error" << std::endl;
     for (unsigned int i = 0; i <= N; ++i) {
-        std::cout << i << " " << std::setw(15) << u[offset[0] + i] << " " << std::setw(15) << analytical(i * delta_x[0]) << " " << std::setw(15) << r[offset[0] + i] << " " << std::setw(15) << std::abs(error(u, offset[0], delta_x[0], i)) << std::endl;
+        std::cout << i << " " << std::setw(15) << u[offset[0] + i] << " " << std::setw(15) << analytical(i * delta_x[0]) << " " << std::setw(15) << r[offset[0] + i] << " " << std::setw(15) << error(u, offset[0], delta_x[0], i) << std::endl;
     }
 
     std::cout << std::endl << "Iterations  residual norm  error norm    time taken [s]      steps" << std::endl;
-    std::cout << n_V << " " << std::setw(15) << residual_norm(r, N_h[level], offset[level]) << " " << std::setw(15) << error_norm(u, N_h[0], offset[0], delta_x[0]) << " " << std::setw(15) << std::chrono::duration<double, std::milli>(t_end-t_start).count()/1000.0 << " " << std::setw(15) << n << std::endl;
+    std::cout << n_V << " " << std::setw(15) << residual_norm(r, N_h[0], offset[0]) << " " << std::setw(15) << error_norm(u, N_h[0], offset[0], delta_x[0]) << " " << std::setw(15) << std::chrono::duration<double, std::milli>(t_end-t_start).count()/1000.0 << " " << std::setw(15) << n << std::endl;
 
     return 0;
 }
