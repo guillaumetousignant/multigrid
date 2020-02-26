@@ -193,17 +193,17 @@ int main(int argc, const char **argv) {
         }        
 
         // Norm
-        /*residual = 0.0;
-        for (unsigned int i = 1; i < N-1; ++i) {
-            residual += std::pow(r[offset[level] + i], 2);
-        }
-        residual = std::sqrt(residual);*/
-
-        // Max
         residual = 0.0;
         for (unsigned int i = 1; i < N; ++i) {
-            residual = std::max(residual, std::abs(r[offset[level] + i]));
+            residual += std::pow(r[offset[level] + i], 2);
         }
+        residual = std::sqrt(residual);
+
+        // Max
+        /*residual = 0.0;
+        for (unsigned int i = 1; i < N; ++i) {
+            residual = std::max(residual, std::abs(r[offset[level] + i]));
+        }*/
     }
     auto t_end = std::chrono::high_resolution_clock::now();
 
@@ -218,7 +218,7 @@ int main(int argc, const char **argv) {
         std::cout << i << " " << std::setw(15) << u[offset[0] + i] << " " << std::setw(15) << std::sin(M_PI * i * delta_x[0]) << " " << std::setw(15) << r[offset[0] + i] << " " << std::setw(15) << std::abs(u[offset[0] + i] - std::sin(M_PI * i * delta_x[0])) << std::endl;
     }
 
-    std::cout << std::endl << "Iterations  max residual   max error     time taken [s]      steps" << std::endl;
+    std::cout << std::endl << "Iterations  residual norm  error norm    time taken [s]      steps" << std::endl;
     std::cout << n_V << " " << std::setw(15) << residual << " " << std::setw(15) << error << " " << std::setw(15) << std::chrono::duration<double, std::milli>(t_end-t_start).count()/1000.0 << " " << std::setw(15) << n << std::endl;
 
 
