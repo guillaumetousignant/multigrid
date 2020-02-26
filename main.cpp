@@ -66,7 +66,7 @@ int main(int argc, const char **argv) {
     std::vector<float> delta_x(max_levels, 1.0/N);
 
     // Vector containing f at each point for the finest grid
-    std::vector<float> f(N+1, 0.0);
+    std::vector<float> f(2*N+max_levels-2, 0.0);
 
     // u_star is cached, so that it can be computed before the u_i start being updated
     std::vector<float> u_star(2*N+max_levels-2, 0.0);
@@ -81,7 +81,7 @@ int main(int argc, const char **argv) {
     }
 
     for (unsigned int i = 0; i <= N; ++i) {
-        f[i] = std::pow(delta_x[0], 2) * std::pow(M_PI, 2) * std::sin(M_PI * i * delta_x[0]);
+        f[offset[0] + i] = std::pow(delta_x[0], 2) * std::pow(M_PI, 2) * std::sin(M_PI * i * delta_x[0]);
     }
 
     // Initial conditions
@@ -109,7 +109,7 @@ int main(int argc, const char **argv) {
         for (unsigned int k = 0; k < n_relax_down; ++k){
             ++n;
             for (unsigned int i = 1; i < N_h[level]; ++i) {
-                u_star[offset[level] + i] = 0.5*(u[offset[level] + i + 1] + u[offset[level] + i - 1] + f[i]);
+                u_star[offset[level] + i] = 0.5*(u[offset[level] + i + 1] + u[offset[level] + i - 1] + f[offset[level] + i]);
             }
             for (unsigned int i = 1; i < N_h[level]; ++i) {
                 u[offset[level] + i] += weight * (u_star[offset[level] + i] - u[offset[level] + i]);
@@ -119,7 +119,7 @@ int main(int argc, const char **argv) {
         // Calculate residuals
         ++n;
         for (unsigned int i = 1; i < N_h[level]; ++i) {
-            u_star[offset[level] + i] = 0.5*(u[offset[level] + i + 1] + u[offset[level] + i - 1] + f[i]);
+            u_star[offset[level] + i] = 0.5*(u[offset[level] + i + 1] + u[offset[level] + i - 1] + f[offset[level] + i]);
         }
         for (unsigned int i = 1; i < N_h[level]; ++i) {
             r[offset[level] + i] = weight * (u_star[offset[level] + i] - u[offset[level] + i]);
@@ -132,14 +132,14 @@ int main(int argc, const char **argv) {
 
             // Restriction
             for (unsigned int i = 1; i < N_h[level]; ++i) {
-                r[offset[level] + i] = 0.25*(r[offset[level-1] + 2*i - 1] + r[offset[level-1] + 2*i + 1] + 2.0*r[offset[level-1] + 2*i]);
+                f[offset[level] + i] = 0.25*(r[offset[level-1] + 2*i - 1] + r[offset[level-1] + 2*i + 1] + 2.0*r[offset[level-1] + 2*i]);
             }
 
             // Relaxation steps
             for (unsigned int k = 0; k < n_relax_down; ++k){
                 ++n;
                 for (unsigned int i = 1; i < N_h[level]; ++i) {
-                    u_star[offset[level] + i] = 0.5*(u[offset[level] + i + 1] + u[offset[level] + i - 1] + r[offset[level] + i]);
+                    u_star[offset[level] + i] = 0.5*(u[offset[level] + i + 1] + u[offset[level] + i - 1] + f[offset[level] + i]);
                 }
                 for (unsigned int i = 1; i < N_h[level]; ++i) {
                     u[offset[level] + i] += weight * (u_star[offset[level] + i] - u[offset[level] + i]);
@@ -149,7 +149,7 @@ int main(int argc, const char **argv) {
             // Calculate residuals
             ++n;
             for (unsigned int i = 1; i < N_h[level]; ++i) {
-                u_star[offset[level] + i] = 0.5*(u[offset[level] + i + 1] + u[offset[level] + i - 1] + r[offset[level] + i]);
+                u_star[offset[level] + i] = 0.5*(u[offset[level] + i + 1] + u[offset[level] + i - 1] + f[offset[level] + i]);
             }
             for (unsigned int i = 1; i < N_h[level]; ++i) {
                 r[offset[level] + i] = weight * (u_star[offset[level] + i] - u[offset[level] + i]);
@@ -173,7 +173,7 @@ int main(int argc, const char **argv) {
             for (unsigned int k = 0; k < n_relax_up; ++k){
                 ++n;
                 for (unsigned int i = 1; i < N_h[level]; ++i) {
-                    u_star[offset[level] + i] = 0.5*(u[offset[level] + i + 1] + u[offset[level] + i - 1] + r[offset[level] + i]);
+                    u_star[offset[level] + i] = 0.5*(u[offset[level] + i + 1] + u[offset[level] + i - 1] + f[offset[level] + i]);
                 }
                 for (unsigned int i = 1; i < N_h[level]; ++i) {
                     u[offset[level] + i] += weight * (u_star[offset[level] + i] - u[offset[level] + i]);
@@ -183,7 +183,7 @@ int main(int argc, const char **argv) {
             // Calculate residuals
             ++n;
             for (unsigned int i = 1; i < N_h[level]; ++i) {
-                u_star[offset[level] + i] = 0.5*(u[offset[level] + i + 1] + u[offset[level] + i - 1] + r[offset[level] + i]);
+                u_star[offset[level] + i] = 0.5*(u[offset[level] + i + 1] + u[offset[level] + i - 1] + f[offset[level] + i]);
             }
             for (unsigned int i = 1; i < N_h[level]; ++i) {
                 r[offset[level] + i] = weight * (u_star[offset[level] + i] - u[offset[level] + i]);
@@ -202,7 +202,7 @@ int main(int argc, const char **argv) {
         for (unsigned int k = 0; k < n_relax_up; ++k){
             ++n;
             for (unsigned int i = 1; i < N_h[level]; ++i) {
-                u_star[offset[level] + i] = 0.5*(u[offset[level] + i + 1] + u[offset[level] + i - 1] + f[i]);
+                u_star[offset[level] + i] = 0.5*(u[offset[level] + i + 1] + u[offset[level] + i - 1] + f[offset[level] + i]);
             }
             for (unsigned int i = 1; i < N_h[level]; ++i) {
                 u[offset[level] + i] += weight * (u_star[offset[level] + i] - u[offset[level] + i]);
@@ -212,7 +212,7 @@ int main(int argc, const char **argv) {
         // Calculate residuals
         ++n;
         for (unsigned int i = 1; i < N_h[level]; ++i) {
-            u_star[offset[level] + i] = 0.5*(u[offset[level] + i + 1] + u[offset[level] + i - 1] + f[i]);
+            u_star[offset[level] + i] = 0.5*(u[offset[level] + i + 1] + u[offset[level] + i - 1] + f[offset[level] + i]);
         }
         for (unsigned int i = 1; i < N_h[level]; ++i) {
             r[offset[level] + i] = weight * (u_star[offset[level] + i] - u[offset[level] + i]);
