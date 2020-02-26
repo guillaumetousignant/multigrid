@@ -29,7 +29,21 @@
   }
 }
 
-@kernel void weighedJacobiTop(const unsigned int N,
+@kernel void relaxation(const unsigned int N,
+                        const unsigned int offset,
+                        const float weight,
+                        const float *f,
+                        float *u,
+                        float *u_star) {
+  for (unsigned int i = 1; i < N; ++i; @tile(16, @outer, @inner)) {
+    u_star[offset + i] = 0.5*(u[offset + i + 1] + u[offset + i - 1] + f[i]);
+  }
+  for (unsigned int i = 1; i < N; ++i; @tile(16, @outer, @inner)) {
+    u[offset + i] += weight * (u_star[offset + i] - u[offset + i]);
+  }
+}
+
+@kernel void residuals(const unsigned int N,
                         const unsigned int offset,
                         const float weight,
                         const float *f,
