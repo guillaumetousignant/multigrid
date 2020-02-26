@@ -131,7 +131,7 @@ int main(int argc, const char **argv) {
             ++level;
 
             // Restriction
-            for (unsigned int i = 1; i < N_h[level]; ++i) {
+            for (unsigned int i = 1; i < N_h[level]; ++i) { // Also retrict u?
                 f[offset[level] + i] = 0.25*(r[offset[level-1] + 2*i - 1] + r[offset[level-1] + 2*i + 1] + 2.0*r[offset[level-1] + 2*i]);
             }
 
@@ -160,7 +160,7 @@ int main(int argc, const char **argv) {
         // Solve fully here?
 
         // Going up
-        while (level > 1){
+        while (level > 0){
             --level;
             
             // Prolongation
@@ -189,36 +189,7 @@ int main(int argc, const char **argv) {
                 r[offset[level] + i] = weight * (u_star[offset[level] + i] - u[offset[level] + i]);
                 u[offset[level] + i] += r[offset[level] + i];
             }
-        }
-
-        --level;
-        // Prolongation
-        for (unsigned int i = 0; i < N_h[level+1]; ++i) {
-            u[offset[level] + 2*i] += u[offset[level+1] + i];
-            u[offset[level] + 2*i + 1] += 0.5 * (u[offset[level+1] + i] + u[offset[level+1] + i + 1]);
-        }
-
-        // Relaxation steps
-        for (unsigned int k = 0; k < n_relax_up; ++k){
-            ++n;
-            for (unsigned int i = 1; i < N_h[level]; ++i) {
-                u_star[offset[level] + i] = 0.5*(u[offset[level] + i + 1] + u[offset[level] + i - 1] + f[offset[level] + i]);
-            }
-            for (unsigned int i = 1; i < N_h[level]; ++i) {
-                u[offset[level] + i] += weight * (u_star[offset[level] + i] - u[offset[level] + i]);
-            }
-        }
-
-        // Calculate residuals
-        ++n;
-        for (unsigned int i = 1; i < N_h[level]; ++i) {
-            u_star[offset[level] + i] = 0.5*(u[offset[level] + i + 1] + u[offset[level] + i - 1] + f[offset[level] + i]);
-        }
-        for (unsigned int i = 1; i < N_h[level]; ++i) {
-            r[offset[level] + i] = weight * (u_star[offset[level] + i] - u[offset[level] + i]);
-            u[offset[level] + i] += r[offset[level] + i];
-        }
-        
+        }        
 
         // Norm
         /*residual = 0.0;
