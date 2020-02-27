@@ -354,13 +354,31 @@ int main(int argc, const char **argv) {
     auto t_end = std::chrono::high_resolution_clock::now();
 
     // Display section
+    std::cout << std::endl << "CPU result" << std::endl;
     std::cout << "i      numerical      analytical        residual           error" << std::endl;
-    for (int i = 0; i <= N; ++i) {
+    for (int i = 0; i <= N_h[0]; ++i) {
         std::cout << i << " " << std::setw(15) << u[offset[0] + i] << " " << std::setw(15) << analytical(i * delta_x[0]) << " " << std::setw(15) << r[offset[0] + i] << " " << std::setw(15) << error(u, offset[0], delta_x[0], i) << std::endl;
     }
 
+    // Host <- Device
+    std::vector<float> u_GPU_local(u.size());
+    std::vector<float> r_GPU_local(r.size());
+    u_GPU.copyTo(u_GPU_local.data());
+    r_GPU.copyTo(r_GPU_local.data());
+
+    std::cout << std::endl << "GPU result" << std::endl;
+    std::cout << "i      numerical      analytical        residual           error" << std::endl;
+    for (unsigned int i = 0; i <= N_h[0]; ++i) {
+        std::cout << i << " " << std::setw(15) << u_GPU_local[offset[0] + i] << " " << std::setw(15) << analytical(i * delta_x[0]) << " " << std::setw(15) << r_GPU_local[offset[0] + i] << " " << std::setw(15) << error(u_GPU_local, offset[0], delta_x[0], i) << std::endl;
+    }
+
+    std::cout << std::endl << "CPU result" << std::endl;
     std::cout << std::endl << "Iterations  residual norm  error norm    time taken [s]      steps" << std::endl;
     std::cout << n_V << " " << std::setw(15) << residual_norm(r, N_h[0], offset[0]) << " " << std::setw(15) << error_norm(u, N_h[0], offset[0], delta_x[0]) << " " << std::setw(15) << std::chrono::duration<double, std::milli>(t_end-t_start).count()/1000.0 << " " << std::setw(15) << n << std::endl;
+
+    std::cout << std::endl << "GPU result" << std::endl;
+    std::cout << std::endl << "Iterations  residual norm  error norm    time taken [s]      steps" << std::endl;
+    std::cout << n_V_GPU << " " << std::setw(15) << residual_norm(r_GPU_local, N_h[0], offset[0]) << " " << std::setw(15) << error_norm(u_GPU_local, N_h[0], offset[0], delta_x[0]) << " " << std::setw(15) << std::chrono::duration<double, std::milli>(t_end_GPU-t_start_GPU).count()/1000.0 << " " << std::setw(15) << n << std::endl;
 
     return 0;
 }
