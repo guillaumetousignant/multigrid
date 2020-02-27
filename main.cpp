@@ -111,6 +111,37 @@ int main(int argc, const char **argv) {
     }
     occa::json args = parseArgs(argc_occa, argv_occa);
 
+    occa::device device;
+    occa::kernel initialFConditions, initialConditions;
+    occa::kernel relaxation, residuals;
+    occa::kernel restriction, prolongation;
+    occa::kernel reduction_max, reduction_norm;
+    occa::memory f_GPU, u_GPU, u_star_GPU, r_GPU;
+    occa::memory block_sum_GPU;
+
+    //---[ Device setup with string flags ]-------------------
+    device.setup((std::string) args["options/device"]);
+
+    // device.setup("mode: 'Serial'");
+
+    // device.setup("mode     : 'OpenMP', "
+    //              "schedule : 'compact', "
+    //              "chunk    : 10");
+
+    // device.setup("mode        : 'OpenCL', "
+    //              "platform_id : 0, "
+    //              "device_id   : 1");
+
+    // device.setup("mode      : 'CUDA', "
+    //              "device_id : 0");
+    //========================================================
+
+    // Reduction parameters
+    unsigned int block   = 256; // Block size ALSO CHANGE IN KERNEL
+    unsigned int max_blocks  = (N + block - 1)/block;    
+    std::vector<float> block_max(max_blocks, 0.0);
+    block_sum_GPU = device.malloc(max_blocks, occa::dtype::float_);
+
     // Figuring out how many times we can coarsen
     int max_levels = 1;
     int N_at_h = N;
@@ -168,6 +199,30 @@ int main(int argc, const char **argv) {
         r[offset[h]] = 0.0;           // r(0) = 0
         r[offset[h]+N_h[h]] = 0.0;    // r(1) = 0
     }
+
+    // GPU vectors init
+    f_GPU = device.malloc(2*N+max_levels-2, occa::dtype::float_);
+    u_GPU = device.malloc(2*N+max_levels-2, occa::dtype::float_);
+    u_star_GPU = device.malloc(2*N+max_levels-2, occa::dtype::float_);
+    r_GPU = device.malloc(2*N+max_levels-2, occa::dtype::float_);
+
+    // Compile the kernel at run-time
+    initialFConditions = device.buildKernel("multigrid.okl",
+                                    "initialFConditions");
+    initialConditions = device.buildKernel("multigrid.okl",
+                                    "initialConditions");
+    relaxation = device.buildKernel("multigrid.okl",
+                                    "relaxation");
+    residuals = device.buildKernel("multigrid.okl",
+                                    "residuals");
+    restriction = device.buildKernel("multigrid.okl",
+                                    "restriction");
+    prolongation = device.buildKernel("multigrid.okl",
+                                    "prolongation");
+    reduction_max = device.buildKernel("multigrid.okl",
+                                    "reduction_max");
+    reduction_norm = device.buildKernel("multigrid.okl",
+                                    "reduction_norm");
 
     // Jacobi iteration
     const float weight = 2.0/(1.0 + std::sqrt(1.0 + std::pow(std::cos(M_PI * delta_x[0]), 2))); // With a weight of 1, the original Jacobi is recovered
