@@ -378,7 +378,7 @@ int main(int argc, const char **argv) {
 
     std::cout << std::endl << "GPU result" << std::endl;
     std::cout << std::endl << "Iterations  residual norm  error norm    time taken [s]      steps" << std::endl;
-    std::cout << n_V_GPU << " " << std::setw(15) << residual_norm(r_GPU_local, N_h[0], offset[0]) << " " << std::setw(15) << error_norm(u_GPU_local, N_h[0], offset[0], delta_x[0]) << " " << std::setw(15) << std::chrono::duration<double, std::milli>(t_end_GPU-t_start_GPU).count()/1000.0 << " " << std::setw(15) << n << std::endl;
+    std::cout << n_V_GPU << " " << std::setw(15) << residual_norm(r_GPU_local, N_h[0], offset[0]) << " " << std::setw(15) << error_norm(u_GPU_local, N_h[0], offset[0], delta_x[0]) << " " << std::setw(15) << std::chrono::duration<double, std::milli>(t_end_GPU-t_start_GPU).count()/1000.0 << " " << std::setw(15) << n_GPU << std::endl;
 
     return 0;
 }
