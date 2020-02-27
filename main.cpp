@@ -139,7 +139,7 @@ int main(int argc, const char **argv) {
     // Reduction parameters
     unsigned int block   = 256; // Block size ALSO CHANGE IN KERNEL
     unsigned int max_blocks  = (N + block - 1)/block;    
-    std::vector<float> block_max(max_blocks, 0.0);
+    std::vector<float> block_sum(max_blocks, 0.0);
     block_sum_GPU = device.malloc(max_blocks, occa::dtype::float_);
 
     // Figuring out how many times we can coarsen
@@ -224,13 +224,89 @@ int main(int argc, const char **argv) {
     reduction_norm_GPU = device.buildKernel("multigrid.okl",
                                     "reduction_norm");
 
+    // Initial f conditions
+    initialFConditions_GPU(N, delta_x[0], f_GPU);
+
+    // Initial conditions
+    for (unsigned int h = 0; h < max_levels; ++h) {
+        initialConditions_GPU(N_h[h], offset[h], 1.0, 0.0, 0.0, u_GPU, r_GPU);
+    }
+
     // Jacobi iteration
     const float weight = 2.0/(1.0 + std::sqrt(1.0 + std::pow(std::cos(M_PI * delta_x[0]), 2))); // With a weight of 1, the original Jacobi is recovered
     int n = 0;
     int n_V = 0;
     const int n_relax_down = 5;    // Will actually do one more because of residuals calculation
     const int n_relax_up = 5;      // Will actually do one more because of residuals calculation
+    int n_GPU = 0;
+    int n_V_GPU = 0;
+    double residual_GPU = 1000000.0;
 
+    // GPU part
+    auto t_start_GPU = std::chrono::high_resolution_clock::now();
+    while (residual_GPU > tolerance) {
+        ++n_V_GPU;
+
+        // Relaxation steps
+        for (int i = 0; i < n_relax_down; ++i){
+            relaxation_GPU(N_h[0], offset[0], weight, f_GPU, u_GPU, u_star_GPU);
+        }
+        n_GPU += n_relax_down;
+
+        // Calculate residuals
+        residuals_GPU(N_h[0], offset[0], weight, f_GPU, u_GPU, u_star_GPU, r_GPU);
+        ++n_GPU;
+
+        // Going down
+        for (int level = 1; level < levels; ++level) {
+
+            // Restriction
+            restriction_GPU(N_h[level], offset[level], offset[level - 1], f_GPU, u_GPU, r_GPU);
+
+            // Relaxation steps
+            for (int i = 0; i < n_relax_down; ++i){
+                relaxation_GPU(N_h[level], offset[level], weight, f_GPU, u_GPU, u_star_GPU);
+            }
+            n_GPU += n_relax_down;
+
+            // Calculate residuals
+            residuals_GPU(N_h[level], offset[level], weight, f_GPU, u_GPU, u_star_GPU, r_GPU);
+            ++n_GPU;
+        }
+
+        // Solve fully here?
+
+        // Going up
+        for (int level = levels - 2; level >= 0; --level){
+            
+            // Prolongation
+            prolongation_GPU(N_h[level + 1], offset[level + 1], offset[level], u_GPU);
+
+            // Relaxation steps
+            for (int i = 0; i < n_relax_up; ++i){
+                relaxation_GPU(N_h[level], offset[level], weight, f_GPU, u_GPU, u_star_GPU);
+            }
+            n_GPU += n_relax_up;
+
+            // Calculate residuals
+            residuals_GPU(N_h[level], offset[level], weight, f_GPU, u_GPU, u_star_GPU, r_GPU);
+            ++n_GPU;
+        }       
+
+        reduction_norm_GPU(N_h[0], offset[0], r_GPU, block_sum_GPU);
+        // Host <- Device
+        block_sum_GPU.copyTo(block_sum.data());
+
+        // Finalize the reduction in the host
+        residual_GPU = 0.0;
+        for (unsigned int i = 0; i < (N + block - 1)/block; ++i) {
+            residual_GPU += block_sum[i];
+        }
+        residual_GPU = std::sqrt(residual_GPU);
+    }
+    auto t_end_GPU = std::chrono::high_resolution_clock::now();
+
+    // CPU part
     auto t_start = std::chrono::high_resolution_clock::now();
     while (residual_norm(r, N_h[0], offset[0]) > tolerance) {
         ++n_V;

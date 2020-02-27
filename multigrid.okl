@@ -127,7 +127,7 @@
 
     for (int item = 0; item < 256; ++item; @inner) {
       if ((group * 256 + item) < N) {
-        s_vec[item] = r[offset + group * 256 + item];
+        s_vec[item] = r[offset + group * 256 + item]*r[offset + group * 256 + item];
       } else {
         s_vec[item] = 0;
       }
