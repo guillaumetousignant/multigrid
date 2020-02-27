@@ -112,10 +112,10 @@ int main(int argc, const char **argv) {
     occa::json args = parseArgs(argc_occa, argv_occa);
 
     occa::device device;
-    occa::kernel initialFConditions, initialConditions;
-    occa::kernel relaxation, residuals;
-    occa::kernel restriction, prolongation;
-    occa::kernel reduction_max, reduction_norm;
+    occa::kernel initialFConditions_GPU, initialConditions_GPU;
+    occa::kernel relaxation_GPU, residuals_GPU;
+    occa::kernel restriction_GPU, prolongation_GPU;
+    occa::kernel reduction_max_GPU, reduction_norm_GPU;
     occa::memory f_GPU, u_GPU, u_star_GPU, r_GPU;
     occa::memory block_sum_GPU;
 
@@ -207,21 +207,21 @@ int main(int argc, const char **argv) {
     r_GPU = device.malloc(2*N+max_levels-2, occa::dtype::float_);
 
     // Compile the kernel at run-time
-    initialFConditions = device.buildKernel("multigrid.okl",
+    initialFConditions_GPU = device.buildKernel("multigrid.okl",
                                     "initialFConditions");
-    initialConditions = device.buildKernel("multigrid.okl",
+    initialConditions_GPU = device.buildKernel("multigrid.okl",
                                     "initialConditions");
-    relaxation = device.buildKernel("multigrid.okl",
+    relaxation_GPU = device.buildKernel("multigrid.okl",
                                     "relaxation");
-    residuals = device.buildKernel("multigrid.okl",
+    residuals_GPU = device.buildKernel("multigrid.okl",
                                     "residuals");
-    restriction = device.buildKernel("multigrid.okl",
+    restriction_GPU = device.buildKernel("multigrid.okl",
                                     "restriction");
-    prolongation = device.buildKernel("multigrid.okl",
+    prolongation_GPU = device.buildKernel("multigrid.okl",
                                     "prolongation");
-    reduction_max = device.buildKernel("multigrid.okl",
+    reduction_max_GPU = device.buildKernel("multigrid.okl",
                                     "reduction_max");
-    reduction_norm = device.buildKernel("multigrid.okl",
+    reduction_norm_GPU = device.buildKernel("multigrid.okl",
                                     "reduction_norm");
 
     // Jacobi iteration
