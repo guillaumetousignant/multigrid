@@ -160,8 +160,16 @@ int main(int argc, const char **argv) {
         exit(-1);
     }
 
+    // Initial values
+    float u_0 = 0.0; // u(0) = 0
+    float u_i = 1.0; // 1 is the initial guess
+    float u_N = 0.0; // u(1) = 0
+    float r_0 = 0.0; // r(0) = 0
+    float r_i = 1.0; // 1 is the intial residual, so the while loop is entered
+    float r_N = 0.0; // r(1) = 0
+
     // Vector of u containing all the grids
-    std::vector<float> u(2*N+max_levels-2, 1.0); // 1 is the initial guess
+    std::vector<float> u(2*N+max_levels-2, u_i); 
 
     // Vector containg number of elements for all levels
     std::vector<int> N_h(max_levels, N);
@@ -179,7 +187,7 @@ int main(int argc, const char **argv) {
     std::vector<float> u_star(2*N+max_levels-2, 0.0);
 
     // Residuals are cached, so that it can run in parallel
-    std::vector<float> r(2*N+max_levels-2, 1.0);
+    std::vector<float> r(2*N+max_levels-2, r_i);
 
     for (int h = 1; h < max_levels; ++h) {
         N_h[h] /= intExp2(h);
@@ -194,10 +202,10 @@ int main(int argc, const char **argv) {
 
     // Initial conditions
     for (int h = 0; h < max_levels; ++h) {
-        u[offset[h]] = 0.0;           // u(0) = 0
-        u[offset[h]+N_h[h]] = 0.0;    // u(1) = 0
-        r[offset[h]] = 0.0;           // r(0) = 0
-        r[offset[h]+N_h[h]] = 0.0;    // r(1) = 0
+        u[offset[h]] = u_0;           
+        u[offset[h]+N_h[h]] = u_N;    
+        r[offset[h]] = r_0;           
+        r[offset[h]+N_h[h]] = r_N;    
     }
 
     // GPU vectors init
@@ -229,7 +237,7 @@ int main(int argc, const char **argv) {
 
     // Initial conditions
     for (unsigned int h = 0; h < max_levels; ++h) {
-        initialConditions_GPU(N_h[h], offset[h], 1.0, 0.0, 0.0, u_GPU, r_GPU);
+        initialConditions_GPU(N_h[h], offset[h], u_i, u_0, u_N, u_GPU, r_GPU); // Can't send doubles, they won't be cast.
     }
 
     // Jacobi iteration
