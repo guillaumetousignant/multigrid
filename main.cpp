@@ -196,7 +196,7 @@ int main(int argc, const char **argv) {
     }
 
     // f initial conditions
-    for (int i = 0; i <= N; ++i) {
+    for (int i = 0; i <= N_h[0]; ++i) {
         f[offset[0] + i] = std::pow(delta_x[0], 2) * std::pow(M_PI, 2) * std::sin(M_PI * i * delta_x[0]);
     }
 
@@ -233,7 +233,7 @@ int main(int argc, const char **argv) {
                                     "reduction_norm");
 
     // Initial f conditions
-    initialFConditions_GPU(N, delta_x[0], f_GPU);
+    initialFConditions_GPU(N_h[0], delta_x[0], f_GPU);
 
     // Initial conditions
     for (unsigned int h = 0; h < max_levels; ++h) {
