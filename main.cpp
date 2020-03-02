@@ -244,7 +244,7 @@ int main(int argc, const char **argv) {
 
     // GPU part
     auto t_start_GPU = std::chrono::high_resolution_clock::now();
-    while (residual_GPU > tolerance && n_V_GPU < 10000) {
+    while (residual_GPU > tolerance && n_V_GPU < 1) {
         ++n_V_GPU;
 
         // Relaxation steps
@@ -308,7 +308,7 @@ int main(int argc, const char **argv) {
 
     // CPU part
     auto t_start = std::chrono::high_resolution_clock::now();
-    while (residual_norm(r, N_h[0], offset[0]) > tolerance && n_V < 10000) {
+    while (residual_norm(r, N_h[0], offset[0]) > tolerance && n_V < 1) {
         ++n_V;
 
         // Relaxation steps
