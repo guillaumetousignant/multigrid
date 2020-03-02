@@ -303,7 +303,7 @@ int main(int argc, const char **argv) {
         }       
 
         // Calculate the error every 'reduction_interval' iterations
-        if (n_V_GPU % reduction_interval == 0) {
+        //if (n_V_GPU % reduction_interval == 0) {
             reduction_norm_GPU(N_h[0], offset[0], r_GPU, block_sum_GPU);
             // Host <- Device
             block_sum_GPU.copyTo(block_sum.data());
@@ -314,7 +314,7 @@ int main(int argc, const char **argv) {
                 residual_GPU += block_sum[i];
             }
             residual_GPU = std::sqrt(residual_GPU);
-        }
+        //}
     }
     auto t_end_GPU = std::chrono::high_resolution_clock::now();
 
