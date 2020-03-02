@@ -36,7 +36,7 @@
                         float *u,
                         float *u_star) {
   for (int i = 1; i < N; ++i; @tile(16, @outer, @inner)) {
-    u_star[offset + i] = 0.5*(u[offset + i + 1] + u[offset + i - 1] + f[i]);
+    u_star[offset + i] = 0.5*(u[offset + i + 1] + u[offset + i - 1] + f[offset + i]);
   }
   for (int i = 1; i < N; ++i; @tile(16, @outer, @inner)) {
     u[offset + i] += weight * (u_star[offset + i] - u[offset + i]);
@@ -51,7 +51,7 @@
                         float *u_star,
                         float *r) {
   for (int i = 1; i < N; ++i; @tile(16, @outer, @inner)) {
-    u_star[offset + i] = 0.5*(u[offset + i + 1] + u[offset + i - 1] + f[i]);
+    u_star[offset + i] = 0.5*(u[offset + i + 1] + u[offset + i - 1] + f[offset + i]);
   }
   for (int i = 1; i < N; ++i; @tile(16, @outer, @inner)) {
     r[offset + i] = weight * (u_star[offset + i] - u[offset + i]);
