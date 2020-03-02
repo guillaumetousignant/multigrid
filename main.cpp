@@ -8,7 +8,7 @@ occa::json parseArgs(int argc, const char **argv);
 
 int intExp2(int p);
 
-void relaxation(std::vector<float> &u, std::vector<float> &u_star, const std::vector<float> &f, int N, int offset, double weight, int n_iter) {
+void relaxation(std::vector<float> &u, std::vector<float> &u_star, const std::vector<float> &f, int N, int offset, float weight, int n_iter) {
     for (int k = 0; k < n_iter; ++k){
         for (int i = 1; i < N; ++i) {
             u_star[offset + i] = 0.5*(u[offset + i + 1] + u[offset + i - 1] + f[offset + i]);
@@ -19,7 +19,7 @@ void relaxation(std::vector<float> &u, std::vector<float> &u_star, const std::ve
     }
 }
 
-void residuals(std::vector<float> &u, std::vector<float> &u_star, std::vector<float> &r, const std::vector<float> &f, int N, int offset, double weight) {
+void residuals(std::vector<float> &u, std::vector<float> &u_star, std::vector<float> &r, const std::vector<float> &f, int N, int offset, float weight) {
     for (int i = 1; i < N; ++i) {
         u_star[offset + i] = 0.5*(u[offset + i + 1] + u[offset + i - 1] + f[offset + i]);
     }
@@ -137,10 +137,11 @@ int main(int argc, const char **argv) {
     //========================================================
 
     // Reduction parameters
-    unsigned int block   = 256; // Block size ALSO CHANGE IN KERNEL
-    unsigned int max_blocks  = (N + block - 1)/block;    
+    int block   = 256; // Block size ALSO CHANGE IN KERNEL
+    int max_blocks  = (N + block - 1)/block;    
     std::vector<float> block_sum(max_blocks, 0.0);
     block_sum_GPU = device.malloc(max_blocks, occa::dtype::float_);
+    const int reduction_interval = 100;
 
     // Figuring out how many times we can coarsen
     int max_levels = 1;
@@ -161,12 +162,12 @@ int main(int argc, const char **argv) {
     }
 
     // Initial values
-    float u_0 = 0.0; // u(0) = 0
-    float u_i = 1.0; // 1 is the initial guess
-    float u_N = 0.0; // u(1) = 0
-    float r_0 = 0.0; // r(0) = 0
-    float r_i = 1.0; // 1 is the intial residual, so the while loop is entered
-    float r_N = 0.0; // r(1) = 0
+    const float u_0 = 0.0; // u(0) = 0
+    const float u_i = 1.0; // 1 is the initial guess
+    const float u_N = 0.0; // u(1) = 0
+    const float r_0 = 0.0; // r(0) = 0
+    const float r_i = 1.0; // 1 is the intial residual, so the while loop is entered
+    const float r_N = 0.0; // r(1) = 0
 
     // Vector of u containing all the grids
     std::vector<float> u(2*N+max_levels-2, u_i); 
@@ -236,7 +237,7 @@ int main(int argc, const char **argv) {
     initialFConditions_GPU(N_h[0], delta_x[0], f_GPU);
 
     // Initial conditions
-    for (unsigned int h = 0; h < max_levels; ++h) {
+    for (int h = 0; h < max_levels; ++h) {
         initialConditions_GPU(N_h[h], offset[h], u_i, u_0, u_N, u_GPU, r_GPU); // Can't send doubles, they won't be cast.
     }
 
@@ -248,7 +249,7 @@ int main(int argc, const char **argv) {
     const int n_relax_up = 5;      // Will actually do one more because of residuals calculation
     int n_GPU = 0;
     int n_V_GPU = 0;
-    double residual_GPU = 1000000.0;
+    float residual_GPU = 1000000.0;
 
     // GPU part
     auto t_start_GPU = std::chrono::high_resolution_clock::now();
@@ -301,16 +302,19 @@ int main(int argc, const char **argv) {
             ++n_GPU;
         }       
 
-        reduction_norm_GPU(N_h[0], offset[0], r_GPU, block_sum_GPU);
-        // Host <- Device
-        block_sum_GPU.copyTo(block_sum.data());
+        // Calculate the error every 'reduction_interval' iterations
+        if (n_V_GPU % reduction_interval == 0) {
+            reduction_norm_GPU(N_h[0], offset[0], r_GPU, block_sum_GPU);
+            // Host <- Device
+            block_sum_GPU.copyTo(block_sum.data());
 
-        // Finalize the reduction in the host
-        residual_GPU = 0.0;
-        for (unsigned int i = 0; i < (N + block - 1)/block; ++i) {
-            residual_GPU += block_sum[i];
+            // Finalize the reduction in the host
+            residual_GPU = 0.0;
+            for (int i = 0; i < (N + block - 1)/block; ++i) {
+                residual_GPU += block_sum[i];
+            }
+            residual_GPU = std::sqrt(residual_GPU);
         }
-        residual_GPU = std::sqrt(residual_GPU);
     }
     auto t_end_GPU = std::chrono::high_resolution_clock::now();
 
@@ -376,7 +380,7 @@ int main(int argc, const char **argv) {
 
     std::cout << std::endl << "GPU result" << std::endl;
     std::cout << "i      numerical      analytical        residual           error" << std::endl;
-    for (unsigned int i = 0; i <= N_h[0]; ++i) {
+    for (int i = 0; i <= N_h[0]; ++i) {
         std::cout << i << " " << std::setw(15) << u_GPU_local[offset[0] + i] << " " << std::setw(15) << analytical(i * delta_x[0]) << " " << std::setw(15) << r_GPU_local[offset[0] + i] << " " << std::setw(15) << error(u_GPU_local, offset[0], delta_x[0], i) << std::endl;
     }
 
